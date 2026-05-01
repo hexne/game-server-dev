@@ -11,6 +11,7 @@ module;
 #include <sys/epoll.h>
 export module net;
 import std;
+import croutine;
 
 export struct Address {
     std::string ip{};
@@ -127,6 +128,14 @@ public:
         return n;
     }
 };
+
+
+Task<Socket> read() {
+
+
+}
+
+
 
 class EpollLoop {
     int epoll_fd_{};
