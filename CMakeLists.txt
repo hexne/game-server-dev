@@ -14,12 +14,12 @@ else()
 endif()
 set(CMAKE_CXX_MODULE_STD 1)
 
-project(GameServerDevDemo)
+project(game-server-dev)
 
 set(CMAKE_CXX_STANDARD 26)
 add_subdirectory(src)
 
-add_executable(GameServerDevDemo src/main.cpp)
-target_link_libraries(GameServerDevDemo PRIVATE
+add_executable(game-server-dev src/main.cpp)
+target_link_libraries(game-server-dev PRIVATE
         module
 )
