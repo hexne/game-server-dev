@@ -6,6 +6,8 @@ module;
 #include <mysql/mysql.h>
 export module database;
 import std;
+
+
 // ===============================
 // Row：对 MYSQL_ROW 的轻量封装
 // ===============================
@@ -78,6 +80,72 @@ public:
 };
 
 
+
+
+export class Database;
+class SQLBuilder {
+    Database* db_ = nullptr;
+
+    std::vector<std::string> selects_;
+    std::string from_;
+    std::vector<std::string> wheres_;
+
+public:
+    SQLBuilder() = default;
+    explicit SQLBuilder(Database* db) : db_(db) {}
+
+    // SELECT
+    template <class... Args>
+    SQLBuilder& select(Args&&... cols) {
+        (selects_.emplace_back(std::forward<Args>(cols)), ...);
+        return *this;
+    }
+
+    // FROM
+    SQLBuilder& from(std::string_view table) {
+        from_ = table;
+        return *this;
+    }
+
+    // WHERE
+    template <class... Args>
+    SQLBuilder& where(std::string_view fmt, Args&&... args) {
+        auto cond = std::vformat(fmt, std::make_format_args(args...));
+        wheres_.push_back(std::move(cond));
+        return *this;
+    }
+
+    // 构建 SQL 字符串
+    std::string build() const {
+        std::string sql = "SELECT ";
+
+        if (selects_.empty()) {
+            sql += "*";
+        } else {
+            for (size_t i = 0; i < selects_.size(); ++i) {
+                if (i) sql += ", ";
+                sql += selects_[i];
+            }
+        }
+
+        sql += " FROM " + from_;
+
+        if (!wheres_.empty()) {
+            sql += " WHERE ";
+            for (size_t i = 0; i < wheres_.size(); ++i) {
+                if (i) sql += " AND ";
+                sql += wheres_[i];
+            }
+        }
+
+        return sql;
+    }
+
+    // 执行 SQL
+    Result exec();
+};
+
+
 // ===============================
 // Database：你要求的最终封装
 // ===============================
@@ -131,7 +199,16 @@ public:
         if (!res) {
             throw std::runtime_error("mysql_store_result failed");
         }
-
         return Result(res);
     }
+
+    SQLBuilder builder_{this};
+    auto operator -> () {
+        return &builder_;
+    }
 };
+
+Result SQLBuilder::exec() {
+    return db_->query(build());
+}
+

@@ -31,8 +31,10 @@ export void server_main() {
 
 
     Database db("root", "arch", "game");
-
-    for (auto row : db.query("SELECT id, name FROM users")) {
+    for (auto row : db->select("id", "name")
+                        .from("users")
+                        .exec())
+    {
         std::cout << row.get_int(0) << " " << row.get_string(1) << "\n";
     }
 
