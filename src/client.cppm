@@ -16,14 +16,14 @@ public:
 
 export void client_main() {
     Log().push_log("Client start");
-    Client client;
-
-    while (true) {
-
-
-        
-        std::this_thread::sleep_for(std::chrono::milliseconds(100));
-    }
+    // Client client;
+    //
+    // while (true) {
+    //
+    //
+    //
+    //     std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    // }
 
 
 }

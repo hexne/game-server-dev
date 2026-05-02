@@ -7,6 +7,7 @@ module;
 export module server;
 import log;
 import net;
+import database;
 import std;
 
 class Server {
@@ -28,10 +29,11 @@ export void server_main() {
     Log().push_log("Server start");
     Server server;
 
-    while (true) {
-        // 获取新连接
 
-        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    Database db("root", "arch", "game");
+
+    for (auto row : db.query("SELECT id, name FROM users")) {
+        std::cout << row.get_int(0) << " " << row.get_string(1) << "\n";
     }
 
 
