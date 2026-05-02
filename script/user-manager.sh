@@ -8,10 +8,11 @@ insert_users() {
     for i in $(seq 1 200); do
         username="user$i"
         password="pass$i"
+        number="num$i"
 
         mysql -u"$DB_USER" -p"$DB_PASS" "$DB_NAME" \
-            -e "INSERT INTO users (name, password_hash)
-                VALUES ('$username', SHA2('$password', 256));"
+            -e "INSERT INTO users (name, password_hash, number)
+                VALUES ('$username', SHA2('$password', 256), '$number');"
     done
     echo "Inserted 200 users."
 }
