@@ -36,15 +36,10 @@ std::string sha256(std::string_view input) {
 export class User {
     int id_{};
     std::string name_{};
-    TCP tcp_{};
-    UDP udp_{};
-
 
 public:
     User(int id) : id_(id) {
 
     }
-
-
 
 };
