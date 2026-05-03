@@ -23,20 +23,14 @@ public:
 export void client_main() {
     sleep(1);
 
-    // 发送到这个地址
-    // int fd = socket(AF_INET, SOCK_STREAM, 0);
-
     Address addr("127.0.0.1", 8080);
 
     Socket socket(addr);
 
-    // connect(fd, addr.socket_address(), addr.size());
     socket.connect();
 
     char msg[] = "Hello Echo Server!";
-    // Buffer buf;
     socket.send(std::span<char>{msg});
-    // send(fd, msg, strlen(msg), 0);
 
     char buf[1024];
     ssize_t n = socket.recv(std::span<char>{buf});

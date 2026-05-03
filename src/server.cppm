@@ -24,28 +24,15 @@ export void server_main() {
 
     Socket socket(Address {"0.0.0.0", 8080});
 
-    // int server_fd = socket(AF_INET, SOCK_STREAM, 0);
-
-
-    // bind(server_fd, addr.socket_address(), addr.size());
     socket.bind();
-    // listen(server_fd);
     socket.listen();
-
-    printf("Server listening...\n");
-
-    // int client_fd = accept(server_fd, NULL, NULL);
     auto client = socket.accept();
 
     char buf[1024];
-    while (1) {
-        // ssize_t n = recv(client_fd, buf, sizeof(buf), 0);
+    while (true) {
         auto n = client.recv(std::span<char>(buf));
-        if (n <= 0) break;
-        // send(client_fd, buf, n, 0);
+        if (n <= 0)
+            break;
         client.send(std::span<char>(buf));
     }
-
-    // close(client_fd);
-    // close(server_fd);
 }
