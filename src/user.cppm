@@ -9,7 +9,7 @@ export module user;
 import std;
 import net;
 
-std::string sha256(std::string_view input) {
+export std::string sha256(std::string_view input) {
     unsigned char hash[SHA256_DIGEST_LENGTH];
     SHA256(
         reinterpret_cast<const unsigned char*>(input.data()),
@@ -38,6 +38,7 @@ export class User {
     std::string name_{};
 
 public:
+    User() = default;
     User(int id) : id_(id) {
 
     }

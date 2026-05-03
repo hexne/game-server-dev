@@ -164,19 +164,22 @@ public:
 
     }
     auto send(std::span<char> span) {
+        std::cout << span.size() << std::endl;
         return ::send(fd_, span.data(), span.size(), 0);
     }
-    auto send(std::string_view str) {
-        return ::send(fd_, str.data(), str.size(), 0);
+
+    auto recv(std::span<char> &&span) {
+        int n = ::recv(fd_, span.data(), span.size(), 0);
+        return n;
     }
     auto recv(std::span<char>& span) {
         int n = ::recv(fd_, span.data(), span.size(), 0);
         span = {span.data(), static_cast<size_t>(n)};
         return n;
     }
-    auto recv(char buf[]) {
-        return ::recv(fd_, buf, sizeof(buf), 0);
-    }
+    // auto recv(char buf[]) {
+    //     return ::recv(fd_, buf, sizeof(buf), 0);
+    // }
 
     ~Socket() {
         ::close(fd_);
