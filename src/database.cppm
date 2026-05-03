@@ -62,14 +62,27 @@ public:
 // ===============================
 class Result {
     MYSQL_RES* res_;
-
+    bool valid_ = false;
+    unsigned long long row_count_ = 0;
+    MYSQL_ROW row_;
 public:
-    explicit Result(MYSQL_RES* r) : res_(r) {}
+    explicit Result(MYSQL_RES* r)
+        : res_(r),
+          valid_(r != nullptr),
+          row_count_(r ? mysql_num_rows(r) : 0) {
+        row_ = mysql_fetch_row(res_);
+    }
 
     ~Result() {
         if (res_) mysql_free_result(res_);
     }
 
+    bool valid() const { return valid_; }
+    bool empty() const { return row_count_ == 0; }
+    unsigned long long size() const { return row_count_; }
+    auto operator[] (int index) const {
+        return row_[index];
+    }
     ResultIterator begin() {
         return ResultIterator(res_, mysql_fetch_row(res_));
     }

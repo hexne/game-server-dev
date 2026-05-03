@@ -22,9 +22,12 @@ public:
 };
 
 
+// 控制类型
 // 000 000 查询密码是否正确, 密码正确直接表示上线了
 
-void split_message(std::string_view msg) {
+// 错误码
+// err 000  失败，无原因
+void split_message(std::string_view msg, Socket &socket) {
     std::string type(msg.begin(), msg.begin() + 6);
 
     // login
@@ -36,22 +39,31 @@ void split_message(std::string_view msg) {
         std::string number(msg.begin() + 6, msg.begin() + pos);
         // + 1 跳过 ':'
         std::string password_hash(msg.begin() + pos + 1, msg.end());
-        std::cout << number << std::endl;
-        std::cout << password_hash << std::endl;
 
         auto res = db->select("password_hash", "id", "name", "number", "create_time")
                      .from("users")
                      .where("number = '{}'", number)
                      .exec();
-        for (auto user : res) {
-            if (user[0] == password_hash) {
-                std::cout << "pass is true" << std::endl;
-            }
-            else {
-                std::cout << "pass is false" << std::endl;
-            }
 
+
+
+        if (res.empty()) {
+            char error[] = "err000";
+            socket.send(std::span{error, sizeof(error) - 1});
         }
+        else {
+            auto send_msg = std::format("{}:{}:{}:{}", res[1], res[2], res[3], res[4]);
+            socket.send(std::span{send_msg.data(), send_msg.size()});
+        }
+        // for (auto user : res) {
+        //     if (user[0] == password_hash) {
+        //         std::cout << "pass is true" << std::endl;
+        //     }
+        //     else {
+        //         std::cout << "pass is false" << std::endl;
+        //     }
+        //
+        // }
 
     }
 
@@ -70,7 +82,7 @@ export void server_main() {
         auto n = client.recv(buf.span());
         if (n <= 0)
             break;
-        split_message(buf.span().data());
+        split_message(buf.span().data(), client);
         // std::string msg(buf);
         // std::cout << msg << std::endl;
         // auto res = db->select("id", "name")

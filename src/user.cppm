@@ -36,11 +36,11 @@ export std::string sha256(std::string_view input) {
 export class User {
     int id_{};
     std::string name_{};
-
+    std::string number_{};
+    std::string create_time_{};
 public:
     User() = default;
-    User(int id) : id_(id) {
-
-    }
+    User(std::string id, std::string_view name, std::string_view number, std::string_view create_time)
+        : id_{std::move(std::stoi(id))}, name_{name}, number_{number}, create_time_{create_time} {  }
 
 };
