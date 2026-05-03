@@ -15,7 +15,7 @@ import net;
 import database;
 import std;
 
-Database db("root", "arch", "game");
+Database db("root", "123456", "game");
 sw::redis::Redis redis("tcp://127.0.0.1:6379");
 
 export class Server {
@@ -58,15 +58,6 @@ void split_message(std::string_view msg, Socket &socket) {
             socket.send(std::span{send_msg.data(), send_msg.size()});
             redis.sadd("online_users", res[1]);
         }
-        // for (auto user : res) {
-        //     if (user[0] == password_hash) {
-        //         std::cout << "pass is true" << std::endl;
-        //     }
-        //     else {
-        //         std::cout << "pass is false" << std::endl;
-        //     }
-        //
-        // }
 
     }
 
