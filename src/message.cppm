@@ -12,18 +12,23 @@ import std;
  * 000 001 : heart
  */
 
+using header_type = std::uint32_t;
 export namespace header {
-    enum class type : std::uint32_t {
+    enum class type : header_type {
         login, heart
     };
     void write(char *buf, type type) {
-        auto v = static_cast<std::uint32_t>(type);
+        auto v = static_cast<header_type>(type);
         std::memcpy(buf, &v, sizeof(v));
     }
     type read(char *buf) {
-        std::uint32_t v;
+        header_type v;
         std::memcpy(&v, buf, sizeof(v));
         return static_cast<type>(v);
+    }
+
+    consteval std::size_t header_size() {
+        return sizeof (header_type);
     }
 }
 

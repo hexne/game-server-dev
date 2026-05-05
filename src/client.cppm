@@ -19,7 +19,7 @@ public:
 
 };
 
-std::optional<User>check_user_password(std::string_view number, std::string_view password) {
+std::optional<User> check_user_password(std::string_view number, std::string_view password) {
 
     auto hash = sha256(password);
     char msg[1024]{};
@@ -32,6 +32,7 @@ std::optional<User>check_user_password(std::string_view number, std::string_view
     char buf[1024]{};
     int n = socket.recv(std::span{buf, sizeof(buf)});
     std::string user_info(buf, n);
+    std::cout << user_info << std::endl;
     if (user_info == "err000") {
         Log().push_log("login error");
         return std::nullopt;
@@ -62,22 +63,6 @@ export void client_main() {
     }
     else {
         Log().push_log("login ok");
-        user.value();
     }
-
-    // Address addr("127.0.0.1", 8080);
-    //
-    // Socket socket(addr);
-    //
-    // socket.connect();
-    //
-    // socket.send("num10");
-    //
-    // Buffer buf;
-    // socket.recv(buf.span());
-    // if (buf.span().size() > 0) {
-    //     std::string ret_info = buf;
-    //     std::cout << ret_info << std::endl;
-    // }
 
 }
