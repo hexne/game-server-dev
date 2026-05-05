@@ -195,4 +195,89 @@ public:
     }
 };
 
+export class TCP {
+    using length_type = std::uint32_t;
+
+    Socket socket_;
+    static constexpr length_type max_message_size_ = 64 * 1024;
+
+    void write_exact(std::span<char> span) {
+        while (!span.empty()) {
+            auto n = socket_.send(span);
+            if (n < 0) {
+                if (errno == EINTR)
+                    continue;
+                throw std::runtime_error(std::string("send failed: ") + std::strerror(errno));
+            }
+            if (n == 0)
+                throw std::runtime_error("send failed: connection closed");
+            span = span.subspan(static_cast<std::size_t>(n));
+        }
+    }
+
+    void read_exact(std::span<char> span) {
+        while (!span.empty()) {
+            auto n = socket_.recv(span);
+            if (n < 0) {
+                if (errno == EINTR)
+                    continue;
+                throw std::runtime_error(std::string("recv failed: ") + std::strerror(errno));
+            }
+            if (n == 0)
+                throw std::runtime_error("recv failed: connection closed");
+            span = span.subspan(static_cast<std::size_t>(n));
+        }
+    }
+
+public:
+
+    TCP() = default;
+    explicit TCP(Address addr) : socket_(addr) {}
+    explicit TCP(Socket socket) : socket_(std::move(socket)) {}
+
+    auto connect() {
+        return socket_.connect();
+    }
+
+    auto bind() {
+        return socket_.bind();
+    }
+
+    auto listen() {
+        return socket_.listen();
+    }
+
+    auto accept() {
+        return TCP(socket_.accept());
+    }
+
+    void send(std::span<char> msg) {
+        if (msg.size() > max_message_size_)
+            throw std::runtime_error("message too large");
+
+        auto len = static_cast<length_type>(msg.size());
+        auto len_span = std::span{reinterpret_cast<char*>(&len), sizeof(len)};
+        write_exact(len_span);
+        write_exact(msg);
+    }
+
+    std::span<char> recv(std::span<char> buf) {
+        length_type net_len{};
+        auto len_span = std::span{reinterpret_cast<char*>(&net_len), sizeof(net_len)};
+        read_exact(len_span);
+
+        auto len = net_len;
+        if (len > max_message_size_)
+            throw std::runtime_error("message too large");
+
+        if (len > buf.size())
+            throw std::runtime_error("receive buffer too small");
+
+        auto msg = buf.first(static_cast<std::size_t>(len));
+        read_exact(msg);
+        return msg;
+    }
+
+};
+
 export using ::ssize_t;
