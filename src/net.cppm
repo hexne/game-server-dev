@@ -66,15 +66,49 @@ public:
 
 export class Socket {
     Address addr_{};
-    int fd_{};
+    int fd_ = -1;
+
+    void close() noexcept {
+        if (fd_ >= 0) {
+            ::close(fd_);
+            fd_ = -1;
+        }
+    }
+
 public:
     Socket() {
-        fd_ = socket(AF_INET, SOCK_STREAM, 0);
+        fd_ = ::socket(AF_INET, SOCK_STREAM, 0);
+        if (fd_ < 0) {
+            throw std::runtime_error(std::string("socket failed: ") + std::strerror(errno));
+        }
     }
-    explicit Socket(const int fd) : fd_(fd) {  }
+    explicit Socket(const int fd) : fd_(fd) {
+        if (fd_ < 0) {
+            throw std::invalid_argument("invalid socket fd");
+        }
+    }
     explicit Socket(const Address &addr) : addr_(addr) {
-        fd_ = socket(AF_INET, SOCK_STREAM, 0);
+        fd_ = ::socket(AF_INET, SOCK_STREAM, 0);
+        if (fd_ < 0) {
+            throw std::runtime_error(std::string("socket failed: ") + std::strerror(errno));
+        }
     }
+
+    Socket(const Socket&) = delete;
+    Socket& operator=(const Socket&) = delete;
+
+    Socket(Socket&& other) noexcept
+        : addr_(other.addr_), fd_(std::exchange(other.fd_, -1)) {}
+
+    Socket& operator=(Socket&& other) noexcept {
+        if (this != &other) {
+            close();
+            addr_ = other.addr_;
+            fd_ = std::exchange(other.fd_, -1);
+        }
+        return *this;
+    }
+
     auto connect() {
         return ::connect(fd_, addr_.socket_address(), addr_.size());
     }
@@ -157,7 +191,7 @@ public:
         return n;
     }
     ~Socket() {
-        ::close(fd_);
+        close();
     }
 };
 
