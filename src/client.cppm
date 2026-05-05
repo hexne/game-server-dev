@@ -25,14 +25,14 @@ std::optional<User> check_user_password(const std::string& number, const std::st
     char msg[1024]{};
     header::write(msg, header::type::login);
 
-    Socket socket(Address{"127.0.0.1", 8080});
+    TCP socket(Address{"127.0.0.1", 8080});
     socket.connect();
     auto login_msg = std::format("{}:{}", number, hash);
-    message::write(msg, header::type::login, std::span{login_msg.data(), login_msg.size()});
-    socket.send(msg);
+    auto msg_size = message::write(msg, header::type::login, std::span{login_msg.data(), login_msg.size()});
+    socket.send(std::span{msg, msg_size});
     char buf[1024]{};
-    int n = socket.recv(std::span{buf, sizeof(buf)});
-    std::string user_info(buf, n);
+    auto recv_msg = socket.recv(std::span{buf, sizeof(buf)});
+    std::string user_info(recv_msg.begin(), recv_msg.end());
     std::cout << user_info << std::endl;
     if (user_info == "err000") {
         Log().push_log("login error");

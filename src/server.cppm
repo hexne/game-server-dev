@@ -20,7 +20,7 @@ public:
 };
 
 
-void login(std::span<char> msg, Socket &socket) {
+void login(std::span<char> msg, TCP &socket) {
     auto pos = std::ranges::find(msg, ':');
     if (pos == msg.end())
         throw std::invalid_argument("invalid server type");
@@ -44,12 +44,12 @@ void login(std::span<char> msg, Socket &socket) {
     }
 }
 
-std::map<header::type, std::function<void(std::span<char>, Socket&)>> events {
+std::map<header::type, std::function<void(std::span<char>, TCP&)>> events {
     { header::type::login, login }
 };
 
 // 分发事件，根据事件不同调用不同的函数
-void distribute(std::span<char> msg, Socket &socket) {
+void distribute(std::span<char> msg, TCP &socket) {
     auto type = header::read(msg);
     if (!events.contains(type))
         throw std::invalid_argument("invalid server type");
@@ -58,7 +58,7 @@ void distribute(std::span<char> msg, Socket &socket) {
 
 export void server_main() {
     Log().push_log("Server start");
-    Socket socket(Address {"0.0.0.0", 8080});
+    TCP socket(Address {"0.0.0.0", 8080});
 
 
     redis.set("hello", "world");
@@ -69,9 +69,9 @@ export void server_main() {
 
     char buf[1024];
     while (true) {
-        auto n = client.recv(buf);
-        if (n <= 0)
+        auto msg = client.recv(buf);
+        if (msg.empty())
             break;
-        distribute(std::span{buf, static_cast<std::size_t>(n)}, client);
+        distribute(msg, client);
     }
 }

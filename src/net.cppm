@@ -64,7 +64,7 @@ public:
     socklen_t size() const { return sizeof(sockaddr_in); }
 };
 
-export class Socket {
+class Socket {
     Address addr_{};
     int fd_ = -1;
 
@@ -201,6 +201,8 @@ export class TCP {
     Socket socket_;
     static constexpr length_type max_message_size_ = 64 * 1024;
 
+    explicit TCP(Socket socket) : socket_(std::move(socket)) {}
+
     void write_exact(std::span<char> span) {
         while (!span.empty()) {
             auto n = socket_.send(span);
@@ -215,7 +217,7 @@ export class TCP {
         }
     }
 
-    void read_exact(std::span<char> span) {
+    bool read_exact(std::span<char> span) {
         while (!span.empty()) {
             auto n = socket_.recv(span);
             if (n < 0) {
@@ -224,16 +226,16 @@ export class TCP {
                 throw std::runtime_error(std::string("recv failed: ") + std::strerror(errno));
             }
             if (n == 0)
-                throw std::runtime_error("recv failed: connection closed");
+                return false;
             span = span.subspan(static_cast<std::size_t>(n));
         }
+        return true;
     }
 
 public:
 
     TCP() = default;
     explicit TCP(Address addr) : socket_(addr) {}
-    explicit TCP(Socket socket) : socket_(std::move(socket)) {}
 
     auto connect() {
         return socket_.connect();
@@ -264,7 +266,8 @@ public:
     std::span<char> recv(std::span<char> buf) {
         length_type net_len{};
         auto len_span = std::span{reinterpret_cast<char*>(&net_len), sizeof(net_len)};
-        read_exact(len_span);
+        if (!read_exact(len_span))
+            return {};
 
         auto len = net_len;
         if (len > max_message_size_)
@@ -274,7 +277,8 @@ public:
             throw std::runtime_error("receive buffer too small");
 
         auto msg = buf.first(static_cast<std::size_t>(len));
-        read_exact(msg);
+        if (!read_exact(msg))
+            return {};
         return msg;
     }
 
