@@ -43,4 +43,7 @@ public:
     User(std::string id, const std::string& name, const std::string& number, const std::string& create_time)
         : id_{std::move(std::stoi(id))}, name_{name}, number_{number}, create_time_{create_time} {  }
 
+    int id() const {
+        return id_;
+    }
 };

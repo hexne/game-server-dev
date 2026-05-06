@@ -53,9 +53,10 @@ std::optional<User> check_user_password(const std::string& number, const std::st
 }
 
 
-void send_heart(TCP &tcp) {
-    char buf[header::header_size()]{};
-    auto size = message::write(buf, header::type::heart, {});
+void send_heart(int id, TCP &tcp) {
+    char buf[16]{};
+    auto id_span = std::span{reinterpret_cast<char*>(&id), sizeof(id)};
+    auto size = message::write(buf, header::type::heart, id_span);
     tcp.send(std::span{buf, size});
 }
 
@@ -75,8 +76,9 @@ export void client_main() {
     }
     else {
         Log().push_log("login ok");
-        timer.add_repeat_task([&socket] {
-            send_heart(socket);
+        auto id = user->id();
+        timer.add_repeat_task([&socket, id] {
+            send_heart(id, socket);
         }, std::chrono::seconds{1});
     }
     while (true)
