@@ -34,16 +34,21 @@ void login(std::span<char> msg, TCP &socket) {
                  .exec();
 
     if (res.empty()) {
-        char error[] = "err000";
-        socket.send(std::span{error, sizeof(error) - 1});
+        char buf[header::header_size()]{};
+        auto size = message::write(buf, header::type::login_err, {});
+        socket.send(std::span{buf, size});
     }
     else {
         auto send_msg = std::format("{}:{}:{}:{}", res[1], res[2], res[3], res[4]);
-        socket.send(std::span{send_msg.data(), send_msg.size()});
+        char buf[1024]{};
+        auto size = message::write(buf, header::type::login_true, std::span{send_msg.data(), send_msg.size()});
+        socket.send(std::span{buf, size});
         auto key = std::format("online:user:{}", res[1]);
         redis.set(key, "1", std::chrono::seconds{15});
     }
 }
+
+
 
 void heart(std::span<char> msg, TCP &socket) {
     if (msg.size() != sizeof(int))

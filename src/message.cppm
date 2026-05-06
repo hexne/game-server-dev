@@ -8,15 +8,35 @@ export module message;
 import std;
 import net;
 
-/*
- * 000 000 : login
- * 000 001 : heart
- */
-
 using header_type = std::uint32_t;
 export namespace header {
     enum class type : header_type {
-        login, heart
+        // 登录相关
+        login,
+        login_err,
+        login_true,
+        logout,
+
+        // 心跳
+        heart,
+
+        // 聊天
+        chat_send,
+
+        // 房间
+        room_create,
+        room_join,
+        room_leave,
+        room_info,
+
+        // 匹配
+        match_join,
+        match_cancel,
+        match_success,
+
+
+        // 系统/错误
+        error
     };
     void write(char *buf, type type) {
         auto v = static_cast<header_type>(type);
