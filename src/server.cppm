@@ -85,7 +85,7 @@ export void server_main() {
         auto type = header::read(msg);
         if (!events.contains(type))
             throw std::invalid_argument("invalid server type");
-        events[type](msg.subspan(header::header_size()), socket);
+        events[type](msg.subspan(header::header_size()), client);
 
         std::vector<std::string> keys;
         sw::redis::Cursor cursor = 0;
