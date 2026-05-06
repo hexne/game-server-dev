@@ -59,6 +59,8 @@ void send_heart(int id, TCP &tcp) {
     tcp.send(std::span{buf, size});
 }
 
+Router router;
+
 
 export void client_main() {
     sleep(1);

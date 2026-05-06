@@ -55,7 +55,7 @@ void heart(std::span<char> msg, TCP &socket) {
     redis.set(key, "1", std::chrono::seconds{15});
     Log().push_log(std::format("Server get {} heart", id));
 }
-std::map<header::type, std::function<void(std::span<char>, TCP&)>> events {
+Router events {
     { header::type::login, login },
     { header::type::heart, heart }
 };
