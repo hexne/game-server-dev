@@ -9,7 +9,7 @@ export module user;
 import std;
 import net;
 
-export std::string sha256(const std::string& input) {
+export std::string sha256(std::string_view input) {
     unsigned char hash[SHA256_DIGEST_LENGTH];
     SHA256(
         reinterpret_cast<const unsigned char*>(input.data()),

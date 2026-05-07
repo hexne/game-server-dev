@@ -15,6 +15,7 @@ export namespace header {
         login,
         login_err,
         login_true,
+        register_user,
         logout,
 
         // 心跳
