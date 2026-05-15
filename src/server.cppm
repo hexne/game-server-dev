@@ -9,12 +9,19 @@ import log;
 import net;
 import database;
 import message;
+import online_user;
+import time;
 import std;
+
 
 Database db("root", "123456", "game");
 sw::redis::Redis redis("tcp://127.0.0.1:6379");
 std::mutex db_mutex;
 std::mutex redis_mutex;
+
+OnlineUserList online_user([](int id) {
+    
+});
 
 export class Server {
 public:
@@ -74,6 +81,9 @@ void heart(std::span<char> msg, TCP &socket) {
 
     int id{};
     std::memcpy(&id, msg.data(), sizeof(id));
+
+    online_user.update(id, Time::now());
+    // 更新用户列表
     auto key = std::format("online:user:{}", id);
     {
         std::lock_guard lock(redis_mutex);
