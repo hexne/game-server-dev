@@ -15,11 +15,9 @@ import std;
 
 
 Database db("root", "123456", "game");
-sw::redis::Redis redis("tcp://127.0.0.1:6379");
 std::mutex db_mutex;
-std::mutex redis_mutex;
 
-OnlineUserList online_user([](int id) {
+OnlineUserList online_user_list([](int id) {
     
 });
 
@@ -67,9 +65,9 @@ void login(std::span<char> msg, TCP &socket) {
         char buf[1024]{};
         auto size = message::write(buf, header::type::login_true, std::span{send_msg.data(), send_msg.size()});
         socket.send(std::span{buf, size});
-        auto key = std::format("online:user:{}", (*user)[1]);
-        std::lock_guard lock(redis_mutex);
-        redis.set(key, "1", std::chrono::seconds{15});
+
+        // 登录成功，直接注册到在线列表
+        online_user_list.update(std::stoi((*user)[1]), Time::now());
     }
 }
 
@@ -82,15 +80,11 @@ void heart(std::span<char> msg, TCP &socket) {
     int id{};
     std::memcpy(&id, msg.data(), sizeof(id));
 
-    online_user.update(id, Time::now());
-    // 更新用户列表
-    auto key = std::format("online:user:{}", id);
-    {
-        std::lock_guard lock(redis_mutex);
-        redis.set(key, "1", std::chrono::seconds{15});
-    }
+    online_user_list.update(id, Time::now());
     Log().push_log(std::format("Server get {} heart", id));
 }
+
+// server 的事件分发
 Router events {
     { header::type::login, login },
     { header::type::heart, heart }
@@ -111,32 +105,12 @@ void handle_client(TCP& client) {
         if (!events.contains(type))
             throw std::invalid_argument("invalid server type");
         events[type](msg.subspan(header::header_size()), client);
-
-        std::vector<std::string> keys;
-        {
-            std::lock_guard lock(redis_mutex);
-            sw::redis::Cursor cursor = 0;
-            do {
-                cursor = redis.scan(cursor, "online:user:*", 10, std::back_inserter(keys));
-            } while (cursor != 0);
-        }
-
-        std::string online_users;
-        for (const auto& key : keys) {
-            if (!online_users.empty())
-                online_users += ", ";
-            online_users += key.substr(std::string{"online:user:"}.size());
-        }
-        Log().push_log(std::format("Online users: [{}]", online_users));
     }
 }
 
 export void server_main() {
     Log().push_log("Server start");
     TCP socket(Address {"0.0.0.0", 8080});
-
-
-    redis.set("hello", "world");
 
     socket.bind();
     socket.listen();

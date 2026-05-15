@@ -49,6 +49,12 @@ public:
         online_[id] = last_time;
     }
 
+    // 在线玩家数量
+    std::size_t size() {
+        std::lock_guard lock(mutex_);
+        return online_.size();
+    }
+
     ~OnlineUserList() {
         thread_.request_stop();
         thread_.join();
