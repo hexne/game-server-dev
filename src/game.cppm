@@ -27,3 +27,10 @@ public:
 
     }
 };
+
+export class GameList {
+    std::unordered_map<int, Game> games_;
+public:
+
+
+};
