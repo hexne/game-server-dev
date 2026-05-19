@@ -32,6 +32,9 @@ public:
 
     ~Client() = default;
 
+    auto fd() {
+        return tcp_.fd();
+    }
     std::optional<User> login(std::string_view number, std::string_view password) {
         auto hash = sha256(password);
         char msg[1024]{};
