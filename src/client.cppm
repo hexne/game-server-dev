@@ -6,6 +6,8 @@
 module;
 #include <arpa/inet.h>
 #include <unistd.h>
+#include <cerrno>
+#include <cstring>
 export module client;
 import log;
 import std;
@@ -21,7 +23,11 @@ export class Client {
 
 public:
     explicit Client(Address address = Address{"127.0.0.1", 8080}) : tcp_(std::move(address)) {
-        tcp_.connect();
+        auto res = tcp_.connect();
+        Log().push_log(std::format("connect res : {}", res));
+        if (res == -1 && errno != EINPROGRESS) {
+            Log().push_log(std::format("connect error : {}", strerror(errno)));
+        }
     }
 
     ~Client() = default;
@@ -32,10 +38,12 @@ public:
         auto login_msg = std::format("{}:{}", number, hash);
         auto msg_size = message::write(msg, header::type::login, std::span{login_msg.data(), login_msg.size()});
         tcp_.send_message(std::span{msg, msg_size});
+        tcp_.writable();
 
         char buf[1024]{};
+        tcp_.readable();
         auto recv_msg = tcp_.get_message();
-        if (recv_msg->empty())
+        if (recv_msg == std::nullopt || recv_msg->empty())
             return std::nullopt;
 
         auto span = std::span<char>{recv_msg->data(), recv_msg->size()};
@@ -95,7 +103,7 @@ export void client_main() {
     sleep(1);
     Log().push_log("Client start");
     Client client;
-
+    Log().push_log("Client init");
     client.login("num10", "pass10");
 
 }

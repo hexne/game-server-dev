@@ -133,7 +133,7 @@ export void server_main() {
 
                 clients[client_fd] = std::make_unique<TCP>(std::move(client));
 
-                epoll.add(client_fd, epoll_out | epoll_et, clients[client_fd].get());
+                epoll.add(client_fd, epoll_in | epoll_out | epoll_et, clients[client_fd].get());
                 continue;
             }
 
@@ -146,8 +146,6 @@ export void server_main() {
             }
 
             while (auto msg = tcp->get_message()) {
-                if (!msg)
-                    return;
                 auto span = std::span{msg->data(), msg->size()};
                 auto type = header::read(span);
                 if (!events_router.contains(type))

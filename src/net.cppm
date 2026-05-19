@@ -68,15 +68,13 @@ class Socket {
     Address addr_{};
     int fd_ = -1;
 
-    void close() noexcept {
-        if (fd_ >= 0) {
-            ::close(fd_);
-            fd_ = -1;
-        }
-    }
     void set_nonblocking() {
         int flags = fcntl(fd_, F_GETFL, 0);
         fcntl(fd_, F_SETFL, flags | O_NONBLOCK);
+    }
+    void set_blocking() {
+        int flags = fcntl(fd_, F_GETFL, 0);
+        fcntl(fd_, F_SETFL, flags & ~O_NONBLOCK);
     }
 
 public:
@@ -121,7 +119,10 @@ public:
     }
 
     auto connect() {
-        return ::connect(fd_, addr_.socket_address(), addr_.size());
+        set_blocking();
+        auto res = ::connect(fd_, addr_.socket_address(), addr_.size());
+        set_nonblocking();
+        return res;
     }
     auto bind() {
         return ::bind(fd_, addr_.socket_address(), addr_.size());
@@ -201,6 +202,14 @@ public:
         int n = ::recv(fd_, span.data(), span.size(), 0);
         return n;
     }
+
+    void close() noexcept {
+        if (fd_ >= 0) {
+            ::close(fd_);
+            fd_ = -1;
+        }
+    }
+
     ~Socket() {
         close();
     }
@@ -257,7 +266,27 @@ public:
     explicit TCP(Socket&& s)
         : socket_(std::move(s)) {}
 
-    TCP(TCP &&) noexcept = default;
+    TCP(TCP&& other) noexcept
+        : socket_(std::move(other.socket_)),
+          read_buf_(std::move(other.read_buf_)),
+          write_buf_(std::move(other.write_buf_)),
+          is_listener_(other.is_listener_)
+    {
+        other.is_listener_ = false;
+    }
+
+
+    TCP& operator=(TCP&& other) noexcept {
+        if (this != &other) {
+            socket_ = std::move(other.socket_);
+            read_buf_ = std::move(other.read_buf_);
+            write_buf_ = std::move(other.write_buf_);
+            is_listener_ = other.is_listener_;
+            other.is_listener_ = false;
+        }
+        return *this;
+    }
+
 
     [[nodiscard]] int fd() const { return socket_.fd(); }
 
@@ -365,7 +394,7 @@ public:
     // 关闭连接
     // -------------------------
     void close() {
-        socket_ = Socket(); // 旧 socket 自动析构并 close fd
+        socket_.close();   // 你需要给 Socket 添加一个 public close()
         read_buf_.clear();
         write_buf_.clear();
     }
