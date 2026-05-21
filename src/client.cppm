@@ -99,6 +99,22 @@ public:
         tcp_.send_message(std::span{buf, size});
     }
 
+    auto user_id() {
+        if (user_ == std::nullopt)
+            return -1;
+        return user_->id();
+    }
+
+    auto user_name() {
+        if (user_ == std::nullopt)
+            return std::string{};
+        return user_->name();
+    }
+    auto user_number() {
+        if (user_ == std::nullopt)
+            return std::string{};
+        return user_->number();
+    }
 };
 
 

@@ -46,4 +46,13 @@ public:
     int id() const {
         return id_;
     }
+    auto name() const {
+        return name_;
+    }
+    auto number() const {
+        return number_;
+    }
+    auto create_time() const {
+        return create_time_;
+    }
 };

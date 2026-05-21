@@ -19,11 +19,15 @@ public:
     }
 
     void show() {
-        std::println("{:^10}{:^10}{:^20}{:^20}{:^20}", "index", "fd", "id", "name", "status");
+        std::println("{:^10}{:^10}{:^20}{:^20}{:^20}{:^20}", "index", "fd", "id", "name", "number", "status");
         for (auto &[index, client] : users_) {
-            std::println("{:^10}{:^10}",
+            std::println("{:^10}{:^10}{:^20}{:^20}{:^20}",
                 index,
-                client->fd());
+                client->fd(),
+                client->user_id(),
+                client->user_name(),
+                client->user_number()
+                );
 
         }
         // for (auto &[fd, user] : users_) {
