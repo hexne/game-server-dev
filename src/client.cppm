@@ -21,45 +21,11 @@ export class Client {
     TCP tcp_;
     Timer timer_;
 
-public:
-    explicit Client(const Address &address) : tcp_(std::move(address)) {
-        auto res = tcp_.connect();
-        Log().push_log(std::format("connect res : {}", res));
-        if (res == -1 && errno != EINPROGRESS) {
-            Log().push_log(std::format("connect error : {}", strerror(errno)));
-        }
+    void login_error(std::span<char> msg) {
+        Log().push_log("login error");
     }
-
-    ~Client() = default;
-
-    auto fd() {
-        return tcp_.fd();
-    }
-    std::optional<User> login(std::string_view number, std::string_view password) {
-        auto hash = sha256(password);
-        char msg[1024]{};
-        auto login_msg = std::format("{}:{}", number, hash);
-        auto msg_size = message::write(msg, header::type::login, std::span{login_msg.data(), login_msg.size()});
-        tcp_.send_message(std::span{msg, msg_size});
-        tcp_.writable();
-
-        char buf[1024]{};
-        tcp_.readable();
-        auto recv_msg = tcp_.get_message();
-        if (recv_msg == std::nullopt || recv_msg->empty())
-            return std::nullopt;
-
-        auto span = std::span<char>{recv_msg->data(), recv_msg->size()};
-        auto type = header::read(span);
-        auto payload = span.subspan(header::header_size());
-        if (type == header::type::login_err) {
-            Log().push_log("login error");
-            return std::nullopt;
-        }
-        if (type != header::type::login_true)
-            throw std::invalid_argument("invalid login response type");
-
-        std::string user_info(payload.begin(), payload.end());
+    void login_true(std::span<char> msg) {
+        std::string user_info(msg.begin(), msg.end());
         std::array<std::string, 4> infos{};
         size_t start = 0;
         size_t idx = 0;
@@ -81,7 +47,29 @@ public:
             send_heart(id);
         }, std::chrono::seconds{5});
 
-        return user_;
+    }
+
+public:
+    explicit Client(const Address &address) : tcp_(std::move(address)) {
+        auto res = tcp_.connect();
+        Log().push_log(std::format("connect res : {}", res));
+        if (res == -1 && errno != EINPROGRESS) {
+            Log().push_log(std::format("connect error : {}", strerror(errno)));
+        }
+    }
+
+    ~Client() = default;
+
+    auto fd() {
+        return tcp_.fd();
+    }
+
+    void login(std::string_view number, std::string_view password) {
+        auto hash = sha256(password);
+        char msg[1024]{};
+        auto login_msg = std::format("{}:{}", number, hash);
+        auto msg_size = message::write(msg, header::type::login, std::span{login_msg.data(), login_msg.size()});
+        tcp_.send_now(std::span{msg, msg_size});
     }
 
     void register_user(std::string_view name, std::string_view number, std::string_view password) {
@@ -114,6 +102,26 @@ public:
         if (user_ == std::nullopt)
             return std::string{};
         return user_->number();
+    }
+
+    auto rounter(std::span<char> msg) {
+        std::println("in rounter");
+        auto header = header::read(msg);
+        auto context = msg.subspan(header::header_size());
+
+        switch (header) {
+        case header::type::login_true:
+            login_true(context);
+            break;
+        case header::type::login_err:
+            login_error(context);
+            break;
+        }
+
+    }
+
+    auto &tcp() {
+        return tcp_;
     }
 };
 

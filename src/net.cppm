@@ -309,7 +309,7 @@ public:
     // -------------------------
     // 可读事件
     // -------------------------
-    void readable() {
+    void get_message_impl() {
         if (is_listener_)
             return;
 
@@ -334,7 +334,7 @@ public:
     // -------------------------
     // 可写事件
     // -------------------------
-    void writable() {
+    void send_message_impl() {
         while (!write_buf_.empty()) {
             int n = socket_.send(std::span<char>(write_buf_.data(), write_buf_.size()));
 
@@ -388,6 +388,15 @@ public:
                           reinterpret_cast<const char*>(&len) + sizeof(len));
 
         write_buf_.insert(write_buf_.end(), msg.begin(), msg.end());
+    }
+
+    void send_now(std::span<char> msg) {
+        send_message(msg);
+        send_message_impl();
+    }
+    auto recv_now() {
+        get_message_impl();
+        return get_message();
     }
 
     // -------------------------

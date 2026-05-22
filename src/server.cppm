@@ -58,13 +58,15 @@ void login(std::span<char> msg, TCP *socket) {
     if (!user) {
         char buf[header::header_size()]{};
         auto size = message::write(buf, header::type::login_err, {});
-        socket->send_message(std::span{buf, size});
+        socket->send_now(std::span{buf, size});
+        std::cout << "send_message" << std::endl;
     }
     else {
         auto send_msg = std::format("{}:{}:{}:{}", (*user)[1], (*user)[2], (*user)[3], (*user)[4]);
         char buf[1024]{};
         auto size = message::write(buf, header::type::login_true, std::span{send_msg.data(), send_msg.size()});
-        socket->send_message(std::span{buf, size});
+        socket->send_now(std::span{buf, size});
+        std::cout << "send_message" << std::endl;
 
         // 登录成功，直接注册到在线列表
         online_user_list.update(std::stoi((*user)[1]), Time::now());
@@ -115,6 +117,7 @@ export void server_main() {
     server.listen();
 
     epoll.add(server.fd(), epoll_in, &server);
+    Log().push_log("epoll ADD");
 
     std::unordered_map<int, std::unique_ptr<TCP>> clients;
 
@@ -139,10 +142,10 @@ export void server_main() {
 
             // 如果是普通连接
             if (events[i].events & epoll_in) {
-                tcp->readable();
+                tcp->get_message_impl();
             }
             if (events[i].events & epoll_out) {
-                tcp->writable();
+                tcp->send_message_impl();
             }
 
             while (auto msg = tcp->get_message()) {
