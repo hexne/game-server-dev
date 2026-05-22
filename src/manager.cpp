@@ -67,7 +67,11 @@ public:
         }
     }
 
-    void login(const std::vector<int> &indexs) {
+    void login(std::vector<int> &indexs) {
+        if (indexs.empty()) {
+            for (auto &[index, client] : users_)
+                indexs.push_back(index);
+        }
         for (auto index : indexs) {
             auto &client = users_[index];
             // client->login();
@@ -131,7 +135,7 @@ int main(int argc, char *argv[]) {
         }
         if (command.cmd == "h" || command.cmd == "help") {  }
 
-        else if (command.cmd  == "show") {
+        else if (command.cmd  == "show" || command.cmd == "ls") {
             manager.show();
         }
         // add number, 添加number个客户端
@@ -142,8 +146,13 @@ int main(int argc, char *argv[]) {
         }
         else if (command.cmd == "login") {
             std::vector<int> indexs{};
+            // login
+            if (command.args.empty()) {
+                manager.login(indexs);
+                continue;
+            }
             auto arg = command.args.front();
-            // up 0-2
+            // login 0-2
             if (arg.find('-')) {
                 auto pos = arg.find('-');
 
@@ -154,13 +163,12 @@ int main(int argc, char *argv[]) {
                     indexs.push_back(i);
                 }
             }
-            // up 0, 2, 5
+            // login 0
+            // login 0 2 5
             else if (arg.find(',')) {
-
-            }
-            // up id
-            else {
-                arg.push_back(std::stoi(arg));
+                for (auto arg : command.args) {
+                    indexs.push_back(std::stoi(arg));
+                }
             }
             manager.login(indexs);
         }
