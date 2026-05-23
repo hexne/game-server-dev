@@ -40,9 +40,9 @@ public:
     }
 
     void show() {
-        std::println("{:^10}{:^10}{:^10}{:^20}{:^20}{:^20}{:^5}", "index", "fd", "id", "name", "number", "status", "room");
+        std::println("{:^10}{:^10}{:^10}{:^20}{:^20}{:^10}{:^10}", "index", "fd", "id", "name", "number", "status", "room");
         for (auto &[index, client] : users_) {
-            std::println("{:^10}{:^10}{:^10}{:^20}{:^20}{:^20}{:^5}",
+            std::println("{:^10}{:^10}{:^10}{:^20}{:^20}{:^10}{:^10}",
                 index,
                 client->fd(),
                 client->user_id(),

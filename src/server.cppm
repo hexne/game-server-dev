@@ -34,7 +34,6 @@ void login(std::span<char> msg, TCP *socket) {
     if (pos == msg.end())
         throw std::invalid_argument("invalid server type");
     std::string number(msg.begin(), pos);
-    std::cout << "login : " << number << std::endl;
     // + 1 跳过 ':'
     std::string password_hash(pos + 1, msg.end());
 
@@ -61,14 +60,12 @@ void login(std::span<char> msg, TCP *socket) {
         char buf[header::header_size()]{};
         auto size = message::write(buf, header::type::login_false, {});
         socket->send_now(std::span{buf, size});
-        std::cout << "send_message" << std::endl;
     }
     else {
         auto send_msg = std::format("{}:{}:{}:{}", (*user)[1], (*user)[2], (*user)[3], (*user)[4]);
         char buf[1024]{};
         auto size = message::write(buf, header::type::login_true, std::span{send_msg.data(), send_msg.size()});
         socket->send_now(std::span{buf, size});
-        std::cout << "send_message" << std::endl;
 
         // 登录成功，直接注册到在线列表
         online_user_list.update(std::stoi((*user)[1]), Time::now());
@@ -86,16 +83,19 @@ void heart(std::span<char> msg, TCP *socket) {
     // Log().push_log(std::format("Server get {} heart", id));
 }
 void create_room(std::span<char> msg, TCP *socket) {
-    std::string id(msg.data(), msg.size());
+    std::string user_id(msg.data(), msg.size());
 
     // 创建一个room, 将id放到这个room中
     auto room = std::make_shared<Room>(Room::create_room());
     online_rooms.insert(room);
     auto it = online_rooms.find(room);
-    it->get()->add_user(std::stoi(id));
+    it->get()->add_user(std::stoi(user_id));
+
+    int room_id = it->get()->id();
+    auto room_id_str = std::to_string(room_id);
 
     char buf[1024]{};
-    auto size = message::write(buf, header::type::room_create_true, {});
+    auto size = message::write(buf, header::type::room_create_true, std::span{room_id_str.data(), room_id_str.size()});
     socket->send_now(std::span{buf, size});
 }
 

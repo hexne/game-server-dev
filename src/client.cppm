@@ -48,7 +48,6 @@ export class Client {
         infos[3] = user_info.substr(start);
         user_ = User(infos[0], infos[1], infos[2], infos[3]);
         user_->status(UserStatus::online);
-        Log().push_log("login ok");
 
         auto id = user_->id();
         timer_.add_repeat_task([this, id] {
@@ -59,9 +58,7 @@ export class Client {
 
     // 联网的只需要
     void create_room_true(std::span<char> msg) {
-        int room_id{};
-        std::memcpy(&room_id, msg.data(), sizeof(int));
-        room_ = room_id;
+        room_ = std::stoi(std::string(msg.data(), msg.size()));
     }
     // user_to_room_true
     // user_to_room_false

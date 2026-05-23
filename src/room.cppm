@@ -37,6 +37,9 @@ public:
             users_.pop_back();
         }
     }
+    int id() const {
+        return id_;
+    }
     void start_match() {
 
     }
