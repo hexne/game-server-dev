@@ -19,19 +19,12 @@ export namespace header {
         // 心跳
         heart,
 
-        // 聊天
-        chat_send,
-
         // 房间
-        create_room,
-        create_room_true,
-
-        // 邀请用户进入房间
-        invite_user_join_room,
-
-        // 用户离开房间
-        leave_room,
-        room_info,
+        room_create,
+        room_create_true,
+        room_invite,
+        room_leave,
+        room_chat,
 
         // 匹配
         match_join,

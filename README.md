@@ -16,31 +16,24 @@
 > "" 空，无内容  
 
 # 通信消息文档
-|    功能    | 客户端发送             | 服务器发送                                   |
-|:--------:|:------------------|:----------------------------------------|
-|    心跳    | heart \<id>       |                                         |    
-|    注册    |||
-|    登录    | login "number"    |                                         |
-|          |                   | login_true "id" "number" "create_time"  |
-|          |                   | login_false ""                          |
-|   创建房间   | create_room \<id> ||
-| 邀请用户进入房间 |                   ||
-|   开始匹配   |||
-|   取消匹配   |||
-| 确认并进入对局  |||
-|   拒绝对局   |||
-|   对局取消   |||
+|    功能    | 客户端发送             | 服务器发送                                  |
+|:--------:|:------------------|:---------------------------------------|
+|    心跳    | heart \<id>       |                                        |    
+|    注册    |                   |                                        |
+|    登录    | login "number"    |                                        |
+|          |                   | login_true "id" "number" "create_time" |
+|          |                   | login_false ""                         |
+|   创建房间   | room_create \<id> |                                        |
+| 邀请用户进入房间 | x                 |                                        |
+|   开始匹配   | x                 |                                        |
+|   取消匹配   | x                 |                                        |
+|          |                   | x                                      |
+|          |                   | x                                      |
+| 确认并进入对局  | x                 |                                        |
+|   拒绝对局   | x                 |                                        |
+|   对局取消   |                   | x                                      |
+|   匹配成功   |                   | x                                      |
 
-
-
-### 创建房间
-> room_create "user_id"
-> room_create_true "room_id"
-
-### 邀请用户进入房间
-room_invite \<room_id> \<id1> \<id2> user1邀请user2进入room_id
->> room_invite_true  
->> room_invite_false  
 
 
 ## 功能进度

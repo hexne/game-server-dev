@@ -88,13 +88,13 @@ public:
 
     }
 
-    void create_room(std::vector<int> &indexs) {
+    void room_create(std::vector<int> &indexs) {
         if (indexs.empty())
             return;
 
         for (auto index : indexs) {
             auto &client = users_[index];
-            client->create_room();
+            client->room_create();
         }
     }
 
@@ -206,7 +206,7 @@ int main(int argc, char *argv[]) {
                 for (auto arg : command.args) {
                     indexs.push_back(std::stoi(arg));
                 }
-                manager.create_room(indexs);
+                manager.room_create(indexs);
             }
 
         }

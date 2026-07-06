@@ -25,7 +25,7 @@ export class Room {
     RoomStatus status = RoomStatus::free;
     friend class RoomList;
 public:
-    static Room create_room(const int master) {
+    static Room room_create(const int master) {
         static int id{};
         Room room(id ++, master);
         return room;
@@ -64,7 +64,7 @@ public:
 //     std::unordered_map<int, Room> rooms_;
 //     static inline int rooms_id = 1;
 //
-//     Room &create_room() {
+//     Room &room_create() {
 //         // @TODO, 生成一个id
 //         const int id = rooms_id++;
 //         rooms_[id] = Room(id);

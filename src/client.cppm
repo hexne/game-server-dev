@@ -24,7 +24,7 @@ export class Client {
     std::map<header::type, void (Client::*)(std::span<char>)> rounter_ = {
         { header::type::login_true, &Client::login_true },
         { header::type::login_false, &Client::login_false },
-        { header::type::create_room_true, &Client::create_room_true },
+        { header::type::room_create_true, &Client::room_create_true },
 
     };
 
@@ -57,7 +57,7 @@ export class Client {
     }
 
     // 联网的只需要
-    void create_room_true(std::span<char> msg) {
+    void room_create_true(std::span<char> msg) {
         room_ = std::stoi(std::string(msg.data(), msg.size()));
     }
     // user_to_room_true
@@ -132,12 +132,12 @@ public:
     // 创建房间 发送一个room_create user_id,
     // 让服务器创建房间，把user_id加进去，然后返回 room_create_true room_id即可
     // 或者room_create_false即可
-    void create_room() {
+    void room_create() {
         if (user_ == std::nullopt)
             return;
         char msg[1024]{};
 
-        auto size = message::write(msg, header::type::create_room, user_id());
+        auto size = message::write(msg, header::type::room_create, user_id());
         tcp_.send_now(std::span{msg, size});
     }
 
