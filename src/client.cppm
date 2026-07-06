@@ -24,7 +24,7 @@ export class Client {
     std::map<header::type, void (Client::*)(std::span<char>)> rounter_ = {
         { header::type::login_true, &Client::login_true },
         { header::type::login_false, &Client::login_false },
-        { header::type::room_create_true, &Client::create_room_true },
+        { header::type::create_room_true, &Client::create_room_true },
 
     };
 
@@ -87,13 +87,13 @@ public:
         tcp_.send_now(std::span{msg, msg_size});
     }
 
-    void register_user(std::string_view name, std::string_view number, std::string_view password) {
-        auto password_hash = sha256(password);
-        char msg[1024]{};
-        auto register_msg = std::format("{}:{}:{}", name, number, password_hash);
-        auto msg_size = message::write(msg, header::type::register_user, std::span{register_msg.data(), register_msg.size()});
-        tcp_.send_message(std::span{msg, msg_size});
-    }
+    // void register_user(std::string_view name, std::string_view number, std::string_view password) {
+    //     auto password_hash = sha256(password);
+    //     char msg[1024]{};
+    //     auto register_msg = std::format("{}:{}:{}", name, number, password_hash);
+    //     auto msg_size = message::write(msg, header::type::register_user, std::span{register_msg.data(), register_msg.size()});
+    //     tcp_.send_message(std::span{msg, msg_size});
+    // }
 
     void send_heart(int id) {
         char buf[16]{};
@@ -136,14 +136,14 @@ public:
         if (user_ == std::nullopt)
             return;
         char msg[1024]{};
-        std::string id = std::to_string(user_->id());
-        auto size = message::write(msg, header::type::room_create, std::span{id});
+
+        auto size = message::write(msg, header::type::create_room, user_id());
         tcp_.send_now(std::span{msg, size});
     }
 
     auto rounter(std::span<char> msg) {
-        auto header = header::read(msg);
-        auto context = msg.subspan(header::header_size());
+        auto header = message::read_header(msg);
+        auto context = msg.subspan(header::header_size);
 
         if (!rounter_.contains(header))
             return;

@@ -58,8 +58,8 @@ void login(std::span<char> msg, TCP *socket) {
     }
 
     if (!user) {
-        char buf[header::header_size()]{};
-        auto size = message::write(buf, header::type::login_false, {});
+        char buf[header::header_size]{};
+        auto size = message::write(buf, header::type::login_false);
         socket->send_now(std::span{buf, size});
     }
     else {
@@ -98,7 +98,7 @@ void create_room(std::span<char> msg, TCP *socket) {
     auto room_id_str = std::to_string(room->id());
 
     char buf[1024]{};
-    auto size = message::write(buf, header::type::room_create_true, std::span{room_id_str.data(), room_id_str.size()});
+    auto size = message::write(buf, header::type::create_room_true, std::span{room_id_str.data(), room_id_str.size()});
     socket->send_now(std::span{buf, size});
 }
 
@@ -115,7 +115,7 @@ void invite_room(std::span<char> msg, TCP *socket) {
 Router events_router {
     { header::type::login, login },
     { header::type::heart, heart },
-    { header::type::room_create, create_room },
+    { header::type::create_room, create_room },
 };
 
 std::vector<std::unique_ptr<TCP>> clients;
@@ -178,10 +178,10 @@ export void server_main() {
 
             while (auto msg = tcp->get_message()) {
                 auto span = std::span{msg->data(), msg->size()};
-                auto type = header::read(span);
+                auto type = message::read_header(span);
                 if (!events_router.contains(type))
                     throw std::invalid_argument("invalid server type");
-                events_router[type](span.subspan(header::header_size()), tcp);
+                events_router[type](span.subspan(header::header_size), tcp);
             }
 
         }

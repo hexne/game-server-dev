@@ -11,7 +11,7 @@ import time;
 export class OnlineUserList {
     std::unordered_map<int, Time> online_;
     std::jthread thread_;
-    std::function<void(int)> out_online_callback_;
+    std::function<void(int)> out_online_callback_;  // @TODO，离线事件调用
     std::mutex mutex_;
 
     // 这个函数只有读取

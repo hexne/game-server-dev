@@ -15,8 +15,6 @@ export namespace header {
         login,
         login_true,
         login_false,
-        register_user,
-        logout,
 
         // 心跳
         heart,
@@ -25,18 +23,14 @@ export namespace header {
         chat_send,
 
         // 房间
-        room_create,
-        room_create_true,
+        create_room,
+        create_room_true,
 
-        // 邀请进入房间
-        room_invite,
-        room_invite_true,   // 对方同意
-        room_invite_false,  // 对方拒绝
+        // 邀请用户进入房间
+        invite_user_join_room,
 
-        // @TODO 同意房间邀请
-        // @TODO 拒绝房间邀请
-
-        room_leave,
+        // 用户离开房间
+        leave_room,
         room_info,
 
         // 匹配
@@ -48,29 +42,32 @@ export namespace header {
         // 系统/错误
         error
     };
-    void write(char *buf, type type) {
-        auto v = static_cast<header_type>(type);
-        std::memcpy(buf, &v, sizeof(v));
-    }
-    type read(std::span<char> buf) {
-        header_type v;
-        std::memcpy(&v, buf.data(), sizeof(v));
-        return static_cast<type>(v);
-    }
 
-    consteval std::size_t header_size() {
-        return sizeof (header_type);
-    }
+    constexpr std::size_t header_size = sizeof(type);
+
 }
 
 
 export namespace message {
+
+    std::size_t write(char *buf, header::type type) {
+        std::uint32_t v = static_cast<std::uint32_t>(type);
+        std::memcpy(buf, &v, sizeof(v));
+        return sizeof(v);
+    }
 
     std::size_t write(char *buf, header::type type, std::span<char> msg) {
         std::uint32_t v = static_cast<std::uint32_t>(type);
         std::memcpy(buf, &v, sizeof(v));
         std::memcpy(buf + sizeof(v), msg.data(), msg.size());
         return sizeof(v) + msg.size();
+    }
+
+    std::size_t write(char *buf, header::type type, int number) {
+        std::uint32_t v = static_cast<std::uint32_t>(type);
+        std::memcpy(buf, &v, sizeof(v));
+        std::memcpy(buf + sizeof(v), &number, sizeof(number));
+        return sizeof(v) + sizeof(number);
     }
 
     char *write(char *buf, int number) {
@@ -81,6 +78,11 @@ export namespace message {
         int number;
         std::memcpy(&number, buf, sizeof(number));
         return number;
+    }
+    header::type read_header(std::span<char> buf) {
+        header::type v;
+        std::memcpy(&v, buf.data(), sizeof(v));
+        return v;
     }
     int read(std::span<char> span) {
         return read(span.data());
