@@ -60,8 +60,6 @@ export class Client {
     void room_create_true(std::span<char> msg) {
         room_ = std::stoi(std::string(msg.data(), msg.size()));
     }
-    // user_to_room_true
-    // user_to_room_false
 
 
 public:
@@ -138,6 +136,13 @@ public:
         char msg[1024]{};
 
         auto size = message::write(msg, header::type::room_create, user_id());
+        tcp_.send_now(std::span{msg, size});
+    }
+
+    // room_invite current_user_id user_id
+    void room_invite(int user) {
+        char msg[1024]{};
+        auto size = message::write(msg, header::type::room_invite, user_id(), user);
         tcp_.send_now(std::span{msg, size});
     }
 

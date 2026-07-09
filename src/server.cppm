@@ -84,10 +84,9 @@ void heart(std::span<char> msg, TCP *socket) {
     // Log().push_log(std::format("Server get {} heart", id));
 }
 
-// room_create "user_id"
+// room_create <user_id>
 void room_create(std::span<char> msg, TCP *socket) {
-    int user_id = std::stoi(std::string(msg.data(), msg.size()));
-
+    int user_id = message::read(msg);
     // 创建一个room, 将id放到这个room中
     auto room = std::make_shared<Room>(Room::room_create(user_id));
     online_rooms.insert(room);
@@ -104,8 +103,11 @@ void room_create(std::span<char> msg, TCP *socket) {
 
 // invite "user_id1" "user_id2"
 // user1 invite user2, 需要先找到user1 在哪个房间？？？
-void invite_room(std::span<char> msg, TCP *socket) {
+void room_invite(std::span<char> msg, TCP *socket) {
+    int user1 = message::read(msg);
+    int user2 = message::read(msg.data() + sizeof(int));
 
+    std::println("{} invite {}", user1, user2);
 
 }
 
@@ -116,6 +118,7 @@ Router events_router {
     { header::type::login, login },
     { header::type::heart, heart },
     { header::type::room_create, room_create },
+    { header::type::room_invite, room_invite },
 };
 
 std::vector<std::unique_ptr<TCP>> clients;

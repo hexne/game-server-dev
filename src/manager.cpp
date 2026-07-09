@@ -9,6 +9,18 @@ class ClientManager {
     std::map<int, std::unique_ptr<Client>> users_;
     Epoll epoll_;
     bool stop_{};
+
+    Client* research_user_by_id(const int id) {
+        for (auto &[index, client] : users_) {
+            if (client->user_id() == id) {
+                return client.get();
+            }
+        }
+        return nullptr;
+    }
+    int get_id_by_index(int index) {
+        return users_[index]->user_id();
+    }
 public:
     void epoll_loop() {
 
@@ -82,11 +94,6 @@ public:
         }
     }
 
-    // 邀请别人进入自己房间
-    void invite(std::vector<int> &indexs) {
-
-
-    }
 
     void room_create(std::vector<int> &indexs) {
         if (indexs.empty())
@@ -96,6 +103,13 @@ public:
             auto &client = users_[index];
             client->room_create();
         }
+    }
+
+    // index1 邀请 index2
+    void room_invite(int user1_index, int user2_index) {
+        auto &client = users_[user1_index];
+        int id = get_id_by_index(user2_index);
+        client->room_invite(id);
     }
 
 
@@ -110,7 +124,6 @@ public:
 struct Command {
     std::string cmd;
     std::vector<std::string> args;
-
     friend std::istream& operator>>(std::istream& is, Command& out) {
         out.cmd.clear();
         out.args.clear();
@@ -204,11 +217,19 @@ int main(int argc, char *argv[]) {
             else {
                 std::vector<int> indexs{};
                 for (auto arg : command.args) {
-                    indexs.push_back(std::stoi(arg));
+                    indexs.emplace_back(std::stoi(arg));
                 }
                 manager.room_create(indexs);
             }
 
+        }
+        else if (command.cmd == "room_invite") {
+
+            int user = std::stoi(command.args.front());
+            for (int i = 1; i < command.args.size(); ++i) {
+                auto user2 = std::stoi(command.args[i]);
+                manager.room_invite(user, user2);
+            }
         }
         command.end();
     }

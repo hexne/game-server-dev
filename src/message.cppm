@@ -23,6 +23,7 @@ export namespace header {
         room_create,
         room_create_true,
         room_invite,
+        room_join,
         room_leave,
         room_chat,
 
@@ -62,7 +63,13 @@ export namespace message {
         std::memcpy(buf + sizeof(v), &number, sizeof(number));
         return sizeof(v) + sizeof(number);
     }
-
+    std::size_t write(char *buf, header::type type, int number1, int number2) {
+        std::uint32_t v = static_cast<std::uint32_t>(type);
+        std::memcpy(buf, &v, sizeof(v));
+        std::memcpy(buf + sizeof(v), &number1, sizeof(number1));
+        std::memcpy(buf + sizeof(v) + sizeof(number1), &number2, sizeof(number2));
+        return sizeof(v) + sizeof(number1) + sizeof(number2);
+    }
     char *write(char *buf, int number) {
         std::memcpy(buf, &number, sizeof(number));
         return buf + sizeof(number);
