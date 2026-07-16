@@ -22,7 +22,7 @@ class log {
     void run() {
         if (!std::filesystem::exists("./logs")) {
             std::filesystem::create_directory("./logs");
-            log_file_ = std::ofstream("/logs/" + log_name());
+            log_file_ = std::ofstream("./logs/" + log_name());
         }
 
         while (!thread_.get_stop_token().stop_requested()
