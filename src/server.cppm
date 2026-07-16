@@ -141,10 +141,19 @@ void room_invite_accept(std::span<char> msg, TCP *socket) {
     int room_id = message::read(msg.data() + sizeof(int));
 
     auto room = search_room_by_id(room_id);
+
     room->add_user(user);
 
-    // @TODO， 通知房间中的其他用户
-    std::println(std::cout, "{} to {}", user, room_id);
+    // @TODO 房间应该加锁
+    auto users = room->users();
+    for (auto id : users) {
+        auto user_socket = user_state_manager.search_user_state_by_user_id(id)->tcp.get();
+
+        char buf[512]{};
+        auto size = message::write(buf, header::type::room_join, id, room_id);
+
+        user_socket->send_now(std::span{buf, size});
+    }
 }
 
 

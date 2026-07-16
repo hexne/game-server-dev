@@ -11,7 +11,7 @@ import time;
 
 
 export struct UserState {
-    int id{};
+    int id = -1;
     std::unique_ptr<TCP> tcp{};
     Time last_time{};
     bool is_online{};

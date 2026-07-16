@@ -45,6 +45,9 @@ public:
     int id() const {
         return id_;
     }
+    std::vector<int> users() {
+        return users_;
+    }
     void start_match() {
 
     }

@@ -26,6 +26,7 @@ export class Client {
         { header::type::login_false, &Client::login_false },
         { header::type::room_create_true, &Client::room_create_true },
         { header::type::room_invite_message, &Client::room_invite_message },
+        { header::type::room_join, &Client::room_join }
     };
 
     void login_false(std::span<char> msg) {
@@ -82,6 +83,22 @@ export class Client {
         char buf[1024]{};
         auto size = message::write(buf, header::type::room_invite_reject, user_id(), user1, user2);
         tcp_.send_now(std::span{buf, size});
+    }
+
+    // room_join <user> <room_id>
+    void room_join(std::span<char> msg) {
+        int user = message::read(msg.data());
+        int room_id = message::read(msg.data() + sizeof(int));
+
+        // 进入房间的是当前用户， 更新房间号
+        if (user == user_id()) {
+            room_ = room_id;
+        }
+        // 否则查询用户信息并显示
+    }
+
+    void room_leave(std::span<char> msg) {
+
     }
 
 public:
