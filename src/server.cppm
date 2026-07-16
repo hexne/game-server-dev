@@ -161,7 +161,7 @@ void room_invite_reject(std::span<char> msg, TCP *socket) {
     auto user2 = message::read(msg.data() + sizeof(int));
 
     auto user = user_state_manager.search_user_state_by_user_id(user2);
-    if (user)
+    if (!user)
         return;
 
     char buf[512]{};
@@ -175,10 +175,13 @@ void room_leave(std::span<char> msg, TCP *socket) {
     auto room_id = message::read(msg.data() + sizeof(int));
 
     auto room = search_room_by_id(room_id);
-    if (room)
+    if (!room)
         return;
+    auto users = room->users();
 
-    for (auto user : room->users()) {
+    room->remove_user(id);
+
+    for (auto user : users) {
         char buf[512]{};
         auto size = message::write(buf, header::type::room_leave, id, room_id);
 
