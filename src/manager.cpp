@@ -153,14 +153,32 @@ struct Command {
 };
 
 
+
+
 int main(int argc, char *argv[]) {
     ClientManager manager;
     std::jthread thread(&ClientManager::epoll_loop, &manager);
 
-    Command command;
+    std::ifstream file{};
+    std::istream *in{};
+    if (argc != 1) {
+        auto path = std::filesystem::path(argv[1]);
+        if (!std::filesystem::exists(path)) {
+            std::println("file not exist {}", path);
+        }
+        file = std::ifstream(path);
+        in = &file;
+    }
+    else {
+        in = &std::cin;
+    }
 
+
+
+
+    Command command;
     command.end();
-    while (std::cin >> command) {
+    while (*in >> command) {
         if (command.cmd == "quit" || command.cmd == "q" || command.cmd == "exit") {
             manager.stop();
             thread.request_stop();
@@ -172,7 +190,6 @@ int main(int argc, char *argv[]) {
             manager.show();
         }
         // add number, 添加number个客户端
-        // @TODO，add 的时候就应该创建fd,而不是在login的时候
         else if (command.cmd == "add") {
             int number = std::stoi(command.args.front());
             manager.add(number);
@@ -232,6 +249,7 @@ int main(int argc, char *argv[]) {
             }
         }
         command.end();
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
     }
     thread.join();
 

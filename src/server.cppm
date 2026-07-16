@@ -19,7 +19,6 @@ import user_state;
 Database db("root", "123456", "game");
 std::mutex db_mutex;
 
-OnlineUserList online_user_list([](int id) {});
 
 std::set<std::shared_ptr<Room>> online_rooms;
 
@@ -36,6 +35,15 @@ public:
 
 };
 UserStateManager user_state_manager;
+OnlineUserList online_user_list([](int id) {
+    auto user = user_state_manager.search_user_state_by_user_id(id);
+    if (!user)
+        return;
+    auto fd = user->fd;
+    user_state_manager.remove_fd(fd);
+
+    // @TODO, 如果在房间里，通知房间中的其他人
+});
 
 
 // login "number"
@@ -134,6 +142,8 @@ void room_invite_accept(std::span<char> msg, TCP *socket) {
 
     auto room = search_room_by_id(room_id);
     room->add_user(user);
+
+    // @TODO， 通知房间中的其他用户
     std::println(std::cout, "{} to {}", user, room_id);
 }
 
