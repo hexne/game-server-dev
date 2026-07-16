@@ -25,7 +25,7 @@ export class Client {
         { header::type::login_true, &Client::login_true },
         { header::type::login_false, &Client::login_false },
         { header::type::room_create_true, &Client::room_create_true },
-
+        { header::type::room_invite_message, &Client::room_invite_message },
     };
 
     void login_false(std::span<char> msg) {
@@ -61,6 +61,28 @@ export class Client {
         room_ = std::stoi(std::string(msg.data(), msg.size()));
     }
 
+    void room_invite_message(std::span<char> msg) {
+        int user1 = message::read(msg.data());
+        int user2 = message::read(msg.data() + sizeof(int));
+        int room_id = message::read(msg.data() + sizeof(int) * 2);
+
+        if (user2 != user_id()) {
+            throw std::runtime_error(std::format("{} != {}", user2, user_id()));
+        }
+
+        // 收到一个邀请信息
+        room_invite_accept(room_id);
+    }
+    void room_invite_accept(int room_id) {
+        char buf[1024]{};
+        auto size = message::write(buf, header::type::room_invite_accept, user_id(), room_id);
+        tcp_.send_now(std::span{buf, size});
+    }
+    void room_invite_reject(int user1, int user2) {
+        char buf[1024]{};
+        auto size = message::write(buf, header::type::room_invite_reject, user_id(), user1, user2);
+        tcp_.send_now(std::span{buf, size});
+    }
 
 public:
     explicit Client(const Address &address) : tcp_(std::move(address)) {
@@ -100,7 +122,7 @@ public:
         tcp_.send_now(std::span{buf, size});
     }
 
-    auto user_id() {
+    int user_id() {
         if (user_ == std::nullopt)
             return -1;
         return user_->id();
@@ -139,10 +161,10 @@ public:
         tcp_.send_now(std::span{msg, size});
     }
 
-    // room_invite current_user_id user_id
+    // room_invite current_user_id user_id current_room_id
     void room_invite(int user) {
         char msg[1024]{};
-        auto size = message::write(msg, header::type::room_invite, user_id(), user);
+        auto size = message::write(msg, header::type::room_invite, user_id(), user, room_.value());
         tcp_.send_now(std::span{msg, size});
     }
 

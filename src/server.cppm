@@ -13,20 +13,29 @@ import online_user;
 import time;
 import room;
 import std;
+import user_state;
 
 
 Database db("root", "123456", "game");
 std::mutex db_mutex;
 
-OnlineUserList online_user_list([](int id) {
-});
+OnlineUserList online_user_list([](int id) {});
 
 std::set<std::shared_ptr<Room>> online_rooms;
+
+std::shared_ptr<Room> search_room_by_id(int id) {
+    for (auto room : online_rooms) {
+        if (room->id() == id)
+            return room;
+    }
+    return {};
+}
 
 export class Server {
 public:
 
 };
+UserStateManager user_state_manager;
 
 
 // login "number"
@@ -70,6 +79,7 @@ void login(std::span<char> msg, TCP *socket) {
 
         // 登录成功，直接注册到在线列表
         online_user_list.update(std::stoi((*user)[1]), Time::now());
+        user_state_manager.bind_user(std::stoi((*user)[1]), socket->fd());
     }
 }
 
@@ -101,16 +111,31 @@ void room_create(std::span<char> msg, TCP *socket) {
     socket->send_now(std::span{buf, size});
 }
 
-// invite "user_id1" "user_id2"
-// user1 invite user2, 需要先找到user1 在哪个房间？？？
+// invite <user_id1> <user_id2> <room_id>
+// user1 invite user2 to room_id
 void room_invite(std::span<char> msg, TCP *socket) {
     int user1 = message::read(msg);
     int user2 = message::read(msg.data() + sizeof(int));
+    int room_id = message::read(msg.data() + sizeof(int) * 2);
 
-    std::println("{} invite {}", user1, user2);
+    char buf[1024]{};
+    auto size = message::write(buf, header::type::room_invite_message, user1, user2, room_id);
+    std::println(std::cout, "{} invite {} to {}", user1, user2, room_id);
 
+    auto user_state = user_state_manager.search_user_state_by_user_id(user2);
+    auto tcp = user_state->tcp.get();
+
+    tcp->send_now(std::span{buf, size});
 }
 
+void room_invite_accept(std::span<char> msg, TCP *socket) {
+    int user = message::read(msg);
+    int room_id = message::read(msg.data() + sizeof(int));
+
+    auto room = search_room_by_id(room_id);
+    room->add_user(user);
+    std::println(std::cout, "{} to {}", user, room_id);
+}
 
 
 // server 的事件分发
@@ -119,65 +144,49 @@ Router events_router {
     { header::type::heart, heart },
     { header::type::room_create, room_create },
     { header::type::room_invite, room_invite },
+    { header::type::room_invite_accept, room_invite_accept },
 };
-
-std::vector<std::unique_ptr<TCP>> clients;
-std::vector<std::jthread> client_threads;
-std::mutex clients_mutex;
-
-// void handle_client(TCP& client) {
-//     char buf[1024];
-//     while (true) {
-//         auto msg = client.recv(buf);
-//         if (msg.empty())
-//             break;
-//
-//         auto type = header::read(msg);
-//         if (!events.contains(type))
-//             throw std::invalid_argument("invalid server type");
-//         events[type](msg.subspan(header::header_size()), client);
-//     }
-// }
 
 export void server_main() {
     Log().push_log("Server start");
 
     Epoll epoll;
-    TCP server(Address("0.0.0.0", 8080));
-    server.bind();
-    server.listen();
+    TCP server_listen(Address("0.0.0.0", 8080));
+    server_listen.bind();
+    server_listen.listen();
 
-    epoll.add(server.fd(), epoll_in, &server);
+    epoll.add(server_listen.fd(), epoll_in | epoll_et);
     Log().push_log("epoll ADD");
 
-    std::unordered_map<int, std::unique_ptr<TCP>> clients;
 
     epoll_event events[64];
     while (true) {
+        // 有几个消息
         int n = epoll.wait(events, 64);
 
         for (int i = 0;i < n; ++i) {
-            TCP *tcp = static_cast<TCP *>(events[i].data.ptr);
+            int fd = events[i].data.fd;
 
-            // 如果是监听者
-            if (tcp->is_listener()) {
-                TCP client = tcp->accept();
+            if (fd == server_listen.fd()) {
+                TCP client = server_listen.accept();
                 int client_fd = client.fd();
                 Log().push_log("Server accept a new connect");
+                user_state_manager.add_fd(client_fd, std::make_unique<TCP>(std::move(client)));
 
-                clients[client_fd] = std::make_unique<TCP>(std::move(client));
-
-                epoll.add(client_fd, epoll_in | epoll_out | epoll_et, clients[client_fd].get());
+                epoll.add(client_fd, epoll_in | epoll_out | epoll_et);
                 continue;
             }
 
-            // 如果是普通连接
-            if (events[i].events & epoll_in) {
+            auto state = user_state_manager.search_user_state_by_fd(fd);
+            if (!state) continue;
+
+            TCP *tcp = state->tcp.get();
+
+            if (events[i].events & epoll_in | epoll_et)
                 tcp->get_message_impl();
-            }
-            if (events[i].events & epoll_out) {
+
+            if (events[i].events & epoll_out)
                 tcp->send_message_impl();
-            }
 
             while (auto msg = tcp->get_message()) {
                 auto span = std::span{msg->data(), msg->size()};
@@ -187,11 +196,10 @@ export void server_main() {
                 events_router[type](span.subspan(header::header_size), tcp);
             }
 
+            if (events[i].events & (epoll_hup | epoll_err)) {
+                user_state_manager.remove_fd(fd);
+            }
+
         }
-
-
     }
-
-
-
 }

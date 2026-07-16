@@ -76,7 +76,7 @@ public:
             int fd = client->fd();
             epoll_.add(fd, epoll_in | epoll_out | epoll_et, client.get());
             users_.emplace(index ++, std::move(client));
-            std::println("add client fd={}", fd);
+            std::println(std::cout, "add client fd={}", fd);
         }
     }
 

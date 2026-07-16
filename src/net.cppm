@@ -231,6 +231,14 @@ public:
         if (epoll_ctl(fd_, EPOLL_CTL_ADD, fd, &ev) < 0)
             throw std::runtime_error("epoll add failed");
     }
+    void add(int fd, uint32_t events) {
+        epoll_event ev{};
+        ev.events = events;
+        ev.data.fd = fd;
+        if (epoll_ctl(fd_, EPOLL_CTL_ADD, fd, &ev) < 0)
+            throw std::runtime_error("epoll mod failed");
+
+    }
 
     void mod(int fd, uint32_t events, void* ptr) {
         epoll_event ev{};
@@ -417,6 +425,8 @@ export {
     constexpr int epoll_in = EPOLLIN;
     constexpr int epoll_out = EPOLLOUT;
     constexpr int epoll_et = EPOLLET;
+    constexpr int epoll_hup = EPOLLHUP;
+    constexpr int epoll_err = EPOLLERR;
 }
 
 export {
