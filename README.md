@@ -32,6 +32,8 @@
 |   拒绝邀请   | room_invite_reject \<user1> \<user2>  |        |                                                  | user1 拒绝 user2 的邀请 |
 |          |                                       | 用户进入房间 | room_join \<user> \<room_id>                     |                    |
 |          |                                       | 用户离开房间 | room_leave \<user> \<room_id>                    |                    |
+|   房间信息   | room_chat <user> "msg"                |        |                                                  |                    |
+|          |                                       | 房间信息   | room_chat <user> "msg"                           |                    |
 |   开始匹配   |                                       |        |                                                  |                    |
 |   取消匹配   |                                       |        |                                                  |                    |
 | 确认并进入对局  |                                       |        |                                                  |                    |

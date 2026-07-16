@@ -81,6 +81,23 @@ export namespace message {
         std::memcpy(buf + sizeof(v) + sizeof(number1) + sizeof(number2), &number3, sizeof(number3));
         return sizeof(v) + sizeof(number1) + sizeof(number2) + sizeof(number3);
     }
+
+    std::size_t write(char *buf, header::type type, int number, std::span<char> msg) {
+        std::uint32_t v = static_cast<std::uint32_t>(type);
+        std::memcpy(buf, &v, sizeof(v));
+        std::memcpy(buf + sizeof(v), &number, sizeof(number));
+        std::memcpy(buf + sizeof(v) + sizeof(number), &msg[0], msg.size());
+        return sizeof(v) + sizeof(number) + msg.size();
+    }
+    std::size_t write(char *buf, header::type type, int number1, int number2, std::span<char> msg) {
+        std::uint32_t v = static_cast<std::uint32_t>(type);
+        std::memcpy(buf, &v, sizeof(v));
+        std::memcpy(buf + sizeof(v), &number1, sizeof(number1));
+        std::memcpy(buf + sizeof(v) + sizeof(number1), &number2, sizeof(number2));
+        std::memcpy(buf + sizeof(v) + sizeof(number1) + sizeof(number2), &msg[0], msg.size());
+        return sizeof(v) + sizeof(number1) + sizeof(number2) + msg.size();
+    }
+
     char *write(char *buf, int number) {
         std::memcpy(buf, &number, sizeof(number));
         return buf + sizeof(number);

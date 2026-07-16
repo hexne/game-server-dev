@@ -28,6 +28,7 @@ export class Client {
         { header::type::room_invite_message, &Client::room_invite_message },
         { header::type::room_join, &Client::room_join },
         { header::type::room_leave, &Client::room_leave },
+        { header::type::room_chat, &Client::room_chat }
     };
 
     void login_false(std::span<char> msg) {
@@ -111,6 +112,17 @@ export class Client {
             room_ = std::nullopt;// 换主页ui
         else
             ;// 换房间内展示
+    }
+
+    void room_chat(std::span<char> msg) {
+        auto user_id = message::read(msg.data());
+        auto room_id = message::read(msg.data() + sizeof(int));
+        auto message = msg.subspan(sizeof(int) * 2);
+
+        if (user_id == this->user_id())
+            return;
+        else
+            std::println("{} : {}", user_id, message);
     }
 
 public:
@@ -201,6 +213,15 @@ public:
     void room_leave() {
         char buf[512]{};
         auto size = message::write(buf, header::type::room_leave, user_id(), room_.value());
+        tcp_.send_now(std::span{buf, size});
+    }
+
+    // 主动发送消息
+    void room_message(std::string msg) {
+        char buf[512]{};
+        if (!user_ || !room_)
+            return;
+        auto size = message::write(buf, header::type::room_chat, user_id(), room_.value(), std::span(msg));
         tcp_.send_now(std::span{buf, size});
     }
 
