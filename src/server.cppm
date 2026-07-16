@@ -156,6 +156,36 @@ void room_invite_accept(std::span<char> msg, TCP *socket) {
     }
 }
 
+void room_invite_reject(std::span<char> msg, TCP *socket) {
+    auto user1 = message::read(msg.data());
+    auto user2 = message::read(msg.data() + sizeof(int));
+
+    auto user = user_state_manager.search_user_state_by_user_id(user2);
+    if (user)
+        return;
+
+    char buf[512]{};
+    auto size = message::write(buf, header::type::room_invite_reject, user1);
+    user->tcp->send_now(std::span{buf, size});
+}
+
+// room_leave <user> <room_id>
+void room_leave(std::span<char> msg, TCP *socket) {
+    auto id = message::read(msg.data());
+    auto room_id = message::read(msg.data() + sizeof(int));
+
+    auto room = search_room_by_id(room_id);
+    if (room)
+        return;
+
+    for (auto user : room->users()) {
+        char buf[512]{};
+        auto size = message::write(buf, header::type::room_leave, id, room_id);
+
+        auto tcp = user_state_manager.search_user_state_by_user_id(user)->tcp.get();
+        tcp->send_now(std::span{buf, size});
+    }
+}
 
 // server 的事件分发
 Router events_router {
@@ -164,6 +194,8 @@ Router events_router {
     { header::type::room_create, room_create },
     { header::type::room_invite, room_invite },
     { header::type::room_invite_accept, room_invite_accept },
+    { header::type::room_invite_reject, room_invite_reject },
+    { header::type::room_leave, room_leave },
 };
 
 export void server_main() {

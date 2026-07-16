@@ -26,7 +26,8 @@ export class Client {
         { header::type::login_false, &Client::login_false },
         { header::type::room_create_true, &Client::room_create_true },
         { header::type::room_invite_message, &Client::room_invite_message },
-        { header::type::room_join, &Client::room_join }
+        { header::type::room_join, &Client::room_join },
+        { header::type::room_leave, &Client::room_leave },
     };
 
     void login_false(std::span<char> msg) {
@@ -57,7 +58,6 @@ export class Client {
 
     }
 
-    // 联网的只需要
     void room_create_true(std::span<char> msg) {
         room_ = std::stoi(std::string(msg.data(), msg.size()));
     }
@@ -72,17 +72,24 @@ export class Client {
         }
 
         // 收到一个邀请信息
-        room_invite_accept(room_id);
+        // room_invite_accept(room_id);
+        room_invite_reject(user2, user1);
     }
     void room_invite_accept(int room_id) {
         char buf[1024]{};
         auto size = message::write(buf, header::type::room_invite_accept, user_id(), room_id);
         tcp_.send_now(std::span{buf, size});
     }
+    // 发送拒绝邀请
     void room_invite_reject(int user1, int user2) {
         char buf[1024]{};
         auto size = message::write(buf, header::type::room_invite_reject, user_id(), user1, user2);
         tcp_.send_now(std::span{buf, size});
+    }
+    // 接收服务器发送的拒绝信息
+    void room_invite_reject(std::span<char> msg) {
+        int id = message::read(msg);
+        std::println("{} rejected you", id);
     }
 
     // room_join <user> <room_id>
@@ -98,7 +105,12 @@ export class Client {
     }
 
     void room_leave(std::span<char> msg) {
+        auto id = message::read(msg.data());
 
+        if (id == user_id())
+            room_ = std::nullopt;// 换主页ui
+        else
+            ;// 换房间内展示
     }
 
 public:
@@ -183,6 +195,13 @@ public:
         char msg[1024]{};
         auto size = message::write(msg, header::type::room_invite, user_id(), user, room_.value());
         tcp_.send_now(std::span{msg, size});
+    }
+
+    // 主动触发离开房间
+    void room_leave() {
+        char buf[512]{};
+        auto size = message::write(buf, header::type::room_leave, user_id(), room_.value());
+        tcp_.send_now(std::span{buf, size});
     }
 
     auto rounter(std::span<char> msg) {
