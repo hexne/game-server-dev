@@ -12,8 +12,18 @@ class log {
     std::jthread thread_{};
     MPSCQueue<std::string> message_queue_{};
     std::atomic_int queue_size_{};
+    std::ofstream log_file_{};
+
+    std::string log_name() {
+        auto now = Time::now();
+        return std::format("{}.log", now.get_date_string());
+    }
 
     void run() {
+        if (!std::filesystem::exists("./logs")) {
+            std::filesystem::create_directory("./logs");
+            log_file_ = std::ofstream("/logs/" + log_name());
+        }
 
         while (!thread_.get_stop_token().stop_requested()
             || queue_size_.load(std::memory_order_acquire)) {
@@ -24,6 +34,7 @@ class log {
             }
             else {
                 std::println("{}", msg.value());
+                std::println(log_file_, "{}", msg.value());
                 queue_size_.fetch_sub(1, std::memory_order_release);
             }
         }
