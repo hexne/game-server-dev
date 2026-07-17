@@ -204,10 +204,11 @@ void room_chat(std::span<char> msg, TCP *socket) {
         char buf[512]{};
         auto size = message::write(buf, header::type::room_chat, msg);
 
-        auto tcp = user_state_manager.search_user_state_by_user_id(user)->tcp.get();
-        if (!tcp)
+        auto user_state = user_state_manager.search_user_state_by_user_id(user);
+        if (!user_state || !user_state->tcp)
             return;
-        tcp->send_now(std::span{buf, size});
+
+        user_state->tcp->send_now(std::span{buf, size});
     }
 
 }
