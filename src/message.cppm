@@ -118,4 +118,3 @@ export namespace message {
 
 }
 
-export using Router = std::map<header::type, std::function<void(std::span<char>, TCP *)>>;
