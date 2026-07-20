@@ -8,21 +8,25 @@ export module room;
 import std;
 
 import id_generator;
+import timer;
 
 // 房间
 enum class RoomStatus {
     free,
-    matching,
+    matching_0, // @NOTE, 匹配等级从0 - 2逐渐宽松, 默认为0
+    matching_1, // 匹配等级1
+    matching_2, // 匹配等级2
     matched,
     battle
 };
-
+export class RoomManager;
 export class Room {
     int id_{};
     int master_{};
     std::vector<int> users_{};  // @NOTE, users_中不保存master_
     RoomStatus status = RoomStatus::free;
     friend class RoomList;
+    friend class RoomManager;
 public:
     static Room room_create(const int master) {
         static RoomIDGenerator id_generator;
@@ -67,7 +71,7 @@ public:
         return ret;
     }
     void start_match() {
-        status = RoomStatus::matching;
+        status = RoomStatus::matching_0;
     }
 
     void stop_match() {
@@ -77,4 +81,141 @@ public:
     bool operator < (const Room &that) const {
         return id_ < that.id_;
     }
+};
+
+
+struct PendingMatch {
+    std::shared_ptr<Room> room_a, room_b;
+    std::set<int> confirmed{};
+};
+
+class RoomManager {
+    // 空闲房间列表
+    std::vector<std::shared_ptr<Room>> free_rooms_;
+    // 匹配中的房间列表
+    std::vector<std::shared_ptr<Room>> matching_rooms_;
+    // 等待确认的房间
+    std::vector<std::shared_ptr<PendingMatch>> pending_matches_;
+
+    Timer match_level_timer_;
+
+    std::mutex free_rooms_mutex_;
+    std::mutex matching_rooms_mutex_;
+    std::mutex pending_matches_mutex_;
+
+    bool match_level0(const std::shared_ptr<Room> &room_a, const std::shared_ptr<Room> &room_b) {
+        if (room_a->users().size() == room_b->users().size())
+            return true;
+        return false;
+    }
+    bool match_level1(const std::shared_ptr<Room> &room_a, const std::shared_ptr<Room> &room_b) {
+
+    }
+    bool match_level2(const std::shared_ptr<Room> &room_a, const std::shared_ptr<Room> &room_b) {
+
+    }
+
+public:
+    RoomManager() = default;
+
+    std::shared_ptr<Room> search_room_by_id(const int id) const {
+
+        auto find_lam = [](const std::vector<std::shared_ptr<Room>> &rooms, int id) -> std::shared_ptr<Room> {
+            auto it = std::ranges::find_if(rooms, [id](const std::shared_ptr<Room> &room) {
+                return room->id() == id;
+            });
+            if (it == rooms.end())
+                return nullptr;
+            return *it;
+        };
+
+        std::shared_ptr<Room> ret = find_lam(free_rooms_, id);
+        if (ret)
+            return ret;
+        ret = find_lam(matching_rooms_, id);
+        if (ret)
+            return ret;
+
+        for (const auto& pending : pending_matches_) {
+            const auto &[room_a, room_b, _] = *pending;
+            if (room_a->id() == id)
+                return room_a;
+            if (room_b->id() == id)
+                return room_b;
+        }
+
+        return nullptr;
+    }
+
+    void add_free_room(const std::shared_ptr<Room> &room) {
+        std::lock_guard lock(free_rooms_mutex_);
+        free_rooms_.push_back(room);
+    }
+    void add_matching_room(const std::shared_ptr<Room> &room) {
+        // @FIXME, 应该从pending或free中操作room
+        std::lock_guard lock(matching_rooms_mutex_);
+        matching_rooms_.push_back(room);
+
+        auto lam = [room, this] -> bool {
+            if (!room)
+                return false;
+
+
+            if (room->status == RoomStatus::matching_0) {
+                room->status = RoomStatus::matching_1;
+                return true;
+            }
+            if (room->status == RoomStatus::matching_1) {
+                room->status = RoomStatus::matching_2;
+                return false;
+            }
+            return false;
+        };
+
+        match_level_timer_.add_task([room, lam, this] {
+            if (lam())
+                match_level_timer_.add_task(lam, std::chrono::minutes{1});
+        }, std::chrono::minutes{1});
+    }
+    void add_pending_room(const std::shared_ptr<PendingMatch> &room) {
+        std::lock_guard lock(pending_matches_mutex_);
+        pending_matches_.push_back(room);
+    }
+
+    std::vector<std::shared_ptr<PendingMatch>> try_match() {
+        std::lock_guard lock(matching_rooms_mutex_);
+        std::vector<std::shared_ptr<PendingMatch>> ret;
+
+        for (int i = 0;i < matching_rooms_.size();i++) {
+            for (int j = 0;j < matching_rooms_.size();j++) {
+                if (i == j)
+                    continue;
+                auto room_a = matching_rooms_[i];
+                auto room_b = matching_rooms_[j];
+                if (room_a->status == RoomStatus::matching_0
+                    || room_b->status == RoomStatus::matching_0) {
+
+                    auto res = match_level0(room_a, room_b);
+                    if (res == true)
+                        ret.emplace_back(std::make_shared<PendingMatch>{room_a, room_b, {}});
+                    continue;
+                }
+                if (room_a->status == RoomStatus::matching_1
+                    || room_b->status == RoomStatus::matching_1) {
+                    auto res = match_level1(room_a, room_b);
+                    if (res == true)
+                        ret.emplace_back(std::make_shared<PendingMatch>{room_a, room_b, {}});
+                    continue;
+                }
+                if (room_a->status == RoomStatus::matching_2
+                    || room_b->status == RoomStatus::matching_2) {
+                    auto res = match_level2(room_a, room_b);
+                    if (res == true)
+                        ret.emplace_back(std::make_shared<PendingMatch>{room_a, room_b, {}});
+                }
+            }
+        }
+        return ret;
+    }
+
 };

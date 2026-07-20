@@ -112,6 +112,11 @@ public:
         client->room_invite(id);
     }
 
+    void match(int index) {
+        auto &client = users_[index];
+        client->match_join();
+    }
+
 
     void stop() {
         stop_ = true;
@@ -247,6 +252,15 @@ int main(int argc, char *argv[]) {
                 auto user2 = std::stoi(command.args[i]);
                 manager.room_invite(user, user2);
             }
+        }
+        else if (command.cmd == "match") {
+
+            for (auto str : command.args) {
+                int index = std::stoi(str);
+                manager.match(index);
+            }
+
+
         }
         command.end();
         std::this_thread::sleep_for(std::chrono::milliseconds(100));

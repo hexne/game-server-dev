@@ -225,6 +225,15 @@ public:
         tcp_.send_now(std::span{buf, size});
     }
 
+    void match_join() {
+        if (room_ == std::nullopt)
+            return;
+
+        // @FIXME, 客户端需要知道谁是房主
+        char buf[512]{};
+
+    }
+
     auto rounter(std::span<char> msg) {
         auto header = message::read_header(msg);
         auto context = msg.subspan(header::header_size);

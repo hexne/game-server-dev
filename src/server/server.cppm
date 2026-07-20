@@ -34,6 +34,7 @@ export class Server {
     std::unique_ptr<TCP> server_listen_;
     UserStateManager user_state_manager;
     OnlineUserList online_user_list;
+    RoomManager room_manager_;
 
     // server 的事件分发
     std::map<header::type, void (Server::*)(std::span<char>, TCP *)> events_router {
@@ -45,6 +46,7 @@ export class Server {
         { header::type::room_invite_reject, &Server::room_invite_reject },
         { header::type::room_leave, &Server::room_leave },
         { header::type::room_chat, &Server::room_chat },
+        { header::type::match_join, &Server::match_join },
     };
 
 public:
@@ -220,6 +222,34 @@ public:
                 return;
 
             user_state->tcp->send_now(std::span{buf, size});
+        }
+
+    }
+    void match_join(std::span<char> msg, TCP *socket) {
+        // @TODO, 协议具体内容
+        int room_id = {};
+        auto room = search_room_by_id(room_id);
+
+        // 把房间添加到匹配队列中
+        room_manager_.add_matching_room(room);
+        auto res = room_manager_.try_match();
+
+        // 通知用户确认
+        if (res.empty())
+        for (auto &pending : res) {
+            auto &[room_a, room_b, _] = *pending;
+
+            auto users = room->users();
+            for (auto user : users) {
+                auto user_status = user_state_manager.search_user_state_by_user_id(user);
+                if (!user_status)
+                    return;
+                auto &socket = user_status->tcp;
+                if (!socket)
+                    return;
+
+                // @TODO, 发送需要确认对局的信息
+            }
         }
 
     }
