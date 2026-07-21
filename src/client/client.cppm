@@ -16,9 +16,14 @@ import user;
 import message;
 import timer;
 
+struct RoomInfo {
+    int id;
+    int master;
+};
+
 export class Client {
     std::optional<User> user_;
-    std::optional<int> room_;
+    std::optional<RoomInfo> room_;
     TCP tcp_;
     Timer timer_;
     std::map<header::type, void (Client::*)(std::span<char>)> rounter_ = {
@@ -60,7 +65,9 @@ export class Client {
     }
 
     void room_create_true(std::span<char> msg) {
-        room_ = std::stoi(std::string(msg.data(), msg.size()));
+        auto room_id = message::read(msg.data());
+        auto master_id = message::read(msg.data() + sizeof(int));
+        room_ = RoomInfo{.id = room_id, .master = master_id};
     }
 
     void room_invite_message(std::span<char> msg) {
@@ -97,10 +104,11 @@ export class Client {
     void room_join(std::span<char> msg) {
         int user = message::read(msg.data());
         int room_id = message::read(msg.data() + sizeof(int));
+        int room_master = message::read(msg.data() + sizeof(int) * 2);
 
         // 进入房间的是当前用户， 更新房间号
         if (user == user_id()) {
-            room_ = room_id;
+            room_ = RoomInfo{.id = room_id, .master = room_master};
         }
         // 否则查询用户信息并显示
     }
@@ -187,7 +195,7 @@ public:
     auto room_id() {
         if (room_ == std::nullopt)
             return std::string{};
-        return std::to_string(room_.value());
+        return std::to_string(room_->id);
     }
 
     // 创建房间 发送一个room_create user_id,
@@ -205,14 +213,14 @@ public:
     // room_invite current_user_id user_id current_room_id
     void room_invite(int user) {
         char msg[1024]{};
-        auto size = message::write(msg, header::type::room_invite, user_id(), user, room_.value());
+        auto size = message::write(msg, header::type::room_invite, user_id(), user, room_->id);
         tcp_.send_now(std::span{msg, size});
     }
 
     // 主动触发离开房间
     void room_leave() {
         char buf[512]{};
-        auto size = message::write(buf, header::type::room_leave, user_id(), room_.value());
+        auto size = message::write(buf, header::type::room_leave, user_id(), room_->id);
         tcp_.send_now(std::span{buf, size});
     }
 
@@ -221,7 +229,7 @@ public:
         char buf[512]{};
         if (!user_ || !room_)
             return;
-        auto size = message::write(buf, header::type::room_chat, user_id(), room_.value(), std::span(msg));
+        auto size = message::write(buf, header::type::room_chat, user_id(), room_->id, std::span(msg));
         tcp_.send_now(std::span{buf, size});
     }
 
@@ -229,9 +237,12 @@ public:
         if (room_ == std::nullopt)
             return;
 
-        // @FIXME, 客户端需要知道谁是房主
-        char buf[512]{};
+        if (user_id() != room_->master)
+            return;
 
+        char buf[512]{};
+        auto size = message::write(buf, header::type::match_join, room_->id());
+        tcp_.send_now(std::span{buf, size});
     }
 
     auto rounter(std::span<char> msg) {

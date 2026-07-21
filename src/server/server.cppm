@@ -121,14 +121,8 @@ public:
         // 创建一个room, 将id放到这个room中
         auto room = std::make_shared<Room>(Room::room_create(user_id));
         online_rooms.insert(room);
-        // auto it = online_rooms.find(room);
-        // it->get()->add_user(user_id);
-
-        // int room_id = it->get()->id();
-        auto room_id_str = std::to_string(room->id());
-
         char buf[1024]{};
-        auto size = message::write(buf, header::type::room_create_true, std::span{room_id_str.data(), room_id_str.size()});
+        auto size = message::write(buf, header::type::room_create_true, room->id(), room->master());
         socket->send_now(std::span{buf, size});
     }
 
@@ -163,7 +157,7 @@ public:
             auto user_socket = user_state_manager.search_user_state_by_user_id(id)->tcp.get();
 
             char buf[512]{};
-            auto size = message::write(buf, header::type::room_join, id, room_id);
+            auto size = message::write(buf, header::type::room_join, id, room_id, room->master());
 
             user_socket->send_now(std::span{buf, size});
         }
@@ -226,8 +220,8 @@ public:
 
     }
     void match_join(std::span<char> msg, TCP *socket) {
-        // @TODO, 协议具体内容
-        int room_id = {};
+
+        int room_id = message::read(msg.data());
         auto room = search_room_by_id(room_id);
 
         // 把房间添加到匹配队列中
