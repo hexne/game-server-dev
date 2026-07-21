@@ -39,6 +39,7 @@ export class Server {
     OnlineUserList online_user_list;
     RoomManager room_manager_;
     int match_timer_fd_;
+    int remove_closed_rooms_fd_;
     Timer timer_;
 
     // server 的事件分发
@@ -64,10 +65,15 @@ public:
          user_state_manager.remove_fd(fd);
     }) {
         match_timer_fd_ = eventfd(0, EFD_NONBLOCK);
+        remove_closed_rooms_fd_ = eventfd(0, EFD_NONBLOCK);
+
         timer_.add_repeat_task([this] {
-            uint64_t val = 1;
-            ::write(match_timer_fd_, &val, sizeof(val));
+            message::send_signal(match_timer_fd_);
         }, std::chrono::seconds{10});
+
+        timer_.add_repeat_task([this] {
+            message::send_signal(remove_closed_rooms_fd_);
+        }, std::chrono::minutes{1});
 
     }
 
@@ -267,6 +273,9 @@ public:
         server_listen_->listen();
 
         epoll.add(server_listen_->fd(), epoll_in | epoll_et);
+        epoll.add(match_timer_fd_, epoll_in);
+        epoll.add(remove_closed_rooms_fd_, epoll_in);
+
         Log().push_log("epoll ADD");
 
 
@@ -289,7 +298,13 @@ public:
                 }
                 if (fd == match_timer_fd_) {
                     // @TODO, 队列变化，并重新触发匹配事件
+                    message::consume_signal(fd);
 
+                    continue;
+                }
+                if (fd == remove_closed_rooms_fd_) {
+                    message::consume_signal(fd);
+                    room_manager_.remove_closed_rooms();
                     continue;
                 }
 

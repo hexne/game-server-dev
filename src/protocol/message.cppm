@@ -4,6 +4,8 @@
 ********************************************************************************/
 
 module;
+#include <sys/eventfd.h>
+#include <unistd.h>
 export module message;
 import std;
 import net;
@@ -114,6 +116,16 @@ export namespace message {
     }
     int read(std::span<char> span) {
         return read(span.data());
+    }
+
+    void send_signal(int fd) {
+        std::uint64_t val = 1;
+        ::write(fd, &val, sizeof(val));
+    }
+
+    void consume_signal(int fd) {
+        std::uint64_t val;
+        ::read(fd, &val, sizeof(val));  // 消费事件
     }
 
 }

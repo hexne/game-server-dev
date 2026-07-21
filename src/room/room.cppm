@@ -17,7 +17,9 @@ enum class RoomStatus {
     matching_1, // 匹配等级1
     matching_2, // 匹配等级2
     matched,
-    battle
+    battle,
+    closed,
+
 };
 export class RoomManager;
 export class Room {
@@ -49,7 +51,7 @@ public:
             users_.pop_back();
         }
         else if (id == master_ && users_.empty()) {
-            // TODO, 解散房间
+            status = RoomStatus::close;
         }
         else {
             if (const auto it = std::ranges::find(users_, id); it != users_.end()) {
@@ -208,6 +210,15 @@ public:
             }
         }
         return ret;
+    }
+
+    void remove_closed_rooms() {
+        // @NOTE, 认为只有空闲中的房间才可能是关闭的
+        // @TODO, 后续再思考其他可能
+        std::lock_guard lock(free_rooms_mutex_);
+        std::erase_if(free_rooms_, [](const auto& room) {
+            return room->status == RoomStatus::closed;
+        });
     }
 
 };
