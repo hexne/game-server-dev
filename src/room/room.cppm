@@ -23,11 +23,13 @@ export class RoomManager;
 export class Room {
     int id_{};
     int master_{};
+    int match_rank_{};
     std::vector<int> users_{};  // @NOTE, users_中不保存master_
     RoomStatus status = RoomStatus::free;
     friend class RoomList;
     friend class RoomManager;
 public:
+    // @TODO, 房间创建、邀请、移除人员都应该修改rank分
     static Room room_create(const int master) {
         static RoomIDGenerator id_generator;
         Room room(id_generator.next(), master);
@@ -55,9 +57,6 @@ public:
                 users_.pop_back();
             }
         }
-
-
-
     }
     int id() const {
         return id_;
@@ -103,16 +102,11 @@ class RoomManager {
     std::mutex matching_rooms_mutex_;
     std::mutex pending_matches_mutex_;
 
-    bool match_level0(const std::shared_ptr<Room> &room_a, const std::shared_ptr<Room> &room_b) {
-        if (room_a->users().size() == room_b->users().size())
+    constexpr static int rank_0 = 100, rank_1 = 200, rank_2 = 300;
+    bool try_match(const std::shared_ptr<Room> &room_a, const std::shared_ptr<Room> &room_b, int rank_distance) {
+        if (std::abs(room_a->match_rank_ - room_b->match_rank_) < rank_distance)
             return true;
         return false;
-    }
-    bool match_level1(const std::shared_ptr<Room> &room_a, const std::shared_ptr<Room> &room_b) {
-
-    }
-    bool match_level2(const std::shared_ptr<Room> &room_a, const std::shared_ptr<Room> &room_b) {
-
     }
 
 public:
@@ -182,6 +176,7 @@ public:
         pending_matches_.push_back(room);
     }
 
+    // @TODO, 先简易匹配把逻辑整通
     std::vector<std::shared_ptr<PendingMatch>> try_match() {
         std::lock_guard lock(matching_rooms_mutex_);
         std::vector<std::shared_ptr<PendingMatch>> ret;
@@ -192,27 +187,24 @@ public:
                     continue;
                 auto room_a = matching_rooms_[i];
                 auto room_b = matching_rooms_[j];
-                if (room_a->status == RoomStatus::matching_0
-                    || room_b->status == RoomStatus::matching_0) {
-
-                    auto res = match_level0(room_a, room_b);
-                    if (res == true)
-                        ret.emplace_back(std::make_shared<PendingMatch>{room_a, room_b, {}});
-                    continue;
-                }
-                if (room_a->status == RoomStatus::matching_1
-                    || room_b->status == RoomStatus::matching_1) {
-                    auto res = match_level1(room_a, room_b);
-                    if (res == true)
-                        ret.emplace_back(std::make_shared<PendingMatch>{room_a, room_b, {}});
-                    continue;
-                }
+                int rank_distance{};
                 if (room_a->status == RoomStatus::matching_2
-                    || room_b->status == RoomStatus::matching_2) {
-                    auto res = match_level2(room_a, room_b);
-                    if (res == true)
-                        ret.emplace_back(std::make_shared<PendingMatch>{room_a, room_b, {}});
-                }
+                    || room_b->status == RoomStatus::matching_2)
+                    rank_distance = rank_2;
+                else if (room_a->status == RoomStatus::matching_1
+                    || room_b->status == RoomStatus::matching_1)
+                    rank_distance = rank_1;
+                else
+                    rank_distance = rank_0;
+
+                bool res = try_match(room_a, room_b, rank_distance);
+                if (!res)
+                    continue;
+
+                // @TODO
+                room_a->status = RoomStatus::matched;
+                room_b->status = RoomStatus::matched;
+                ret.emplace_back(std::make_shared<PendingMatch>(room_a, room_b));
             }
         }
         return ret;

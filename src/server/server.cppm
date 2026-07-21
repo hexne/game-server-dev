@@ -4,6 +4,8 @@
 ********************************************************************************/
 module;
 #include <sw/redis++/redis++.h>
+#include <unistd.h>
+#include <sys/eventfd.h>
 export module server;
 import log;
 import net;
@@ -14,6 +16,7 @@ import time;
 import room;
 import std;
 import user_state;
+import timer;
 
 
 Database db("root", "123456", "game");
@@ -35,6 +38,8 @@ export class Server {
     UserStateManager user_state_manager;
     OnlineUserList online_user_list;
     RoomManager room_manager_;
+    int match_timer_fd_;
+    Timer timer_;
 
     // server 的事件分发
     std::map<header::type, void (Server::*)(std::span<char>, TCP *)> events_router {
@@ -57,7 +62,14 @@ public:
              return;
          auto fd = user->fd;
          user_state_manager.remove_fd(fd);
-    }) {}
+    }) {
+        match_timer_fd_ = eventfd(0, EFD_NONBLOCK);
+        timer_.add_repeat_task([this] {
+            uint64_t val = 1;
+            ::write(match_timer_fd_, &val, sizeof(val));
+        }, std::chrono::seconds{10});
+
+    }
 
     // login "number"
     void login(std::span<char> msg, TCP *socket) {
@@ -273,6 +285,11 @@ public:
                     user_state_manager.add_fd(client_fd, std::make_unique<TCP>(std::move(client)));
 
                     epoll.add(client_fd, epoll_in | epoll_out | epoll_et);
+                    continue;
+                }
+                if (fd == match_timer_fd_) {
+                    // @TODO, 队列变化，并重新触发匹配事件
+
                     continue;
                 }
 
