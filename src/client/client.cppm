@@ -241,7 +241,7 @@ public:
             return;
 
         char buf[512]{};
-        auto size = message::write(buf, header::type::match_join, room_->id());
+        auto size = message::write(buf, header::type::match_join, room_->id);
         tcp_.send_now(std::span{buf, size});
     }
 

@@ -51,7 +51,7 @@ public:
             users_.pop_back();
         }
         else if (id == master_ && users_.empty()) {
-            status = RoomStatus::close;
+            status = RoomStatus::closed;
         }
         else {
             if (const auto it = std::ranges::find(users_, id); it != users_.end()) {

@@ -248,6 +248,8 @@ public:
 
         // 通知用户确认
         if (res.empty())
+            return;
+
         for (auto &pending : res) {
             auto &[room_a, room_b, _] = *pending;
 
