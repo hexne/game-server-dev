@@ -78,7 +78,7 @@ export class Server {
             return;
 
         for (auto &pending_match : res) {
-            const auto &[pending_match_id, room_a, room_b, _] = *pending_match;
+            const auto &[pending_match_id, _, room_a, room_b, _] = *pending_match;
             for (auto &user_id : room_a->users())
                 match_success(user_id, pending_match_id);
             for (auto &user_id : room_b->users())

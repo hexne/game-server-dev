@@ -146,13 +146,13 @@ export class Client {
     // 接受对局
     void match_accept(int id) {
         char buf[512]{};
-        auto size = message::write(buf, header::type::match_accept, id, id);
+        auto size = message::write(buf, header::type::match_accept, user_id(), id);
         tcp_.send_now(std::span{buf, size});
     }
     // 拒绝对局
     void match_reject(int id) {
         char buf[512]{};
-        auto size = message::write(buf, header::type::match_reject, id, id);
+        auto size = message::write(buf, header::type::match_reject, user_id(), id);
         tcp_.send_now(std::span{buf, size});
     }
 
