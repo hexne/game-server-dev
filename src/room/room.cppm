@@ -271,7 +271,7 @@ public:
         {
             std::lock_guard lock(pending_matches_mutex_);
             std::erase_if(pending_matches_, [id](std::shared_ptr<PendingMatch> &cur) {
-                return cur->id = id;
+                return cur->id == id;
             });
         }
 

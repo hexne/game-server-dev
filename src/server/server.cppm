@@ -19,8 +19,8 @@ import user_state;
 import timer;
 
 
-Database db("root", "123456", "game");
-std::mutex db_mutex;
+
+
 
 
 std::set<std::shared_ptr<Room>> online_rooms;
@@ -41,6 +41,8 @@ export class Server {
     int match_timer_fd_;
     int remove_closed_rooms_fd_;
     Timer timer_;
+    Database db_;
+    std::mutex db_mutex;
 
     // server 的事件分发
     std::map<header::type, void (Server::*)(std::span<char>, TCP *)> events_router {
@@ -140,7 +142,7 @@ public:
              return;
          auto fd = user->fd;
          user_state_manager.remove_fd(fd);
-    }) {
+    }), db_("root", "123456", "game") {
         match_timer_fd_ = eventfd(0, EFD_NONBLOCK);
         remove_closed_rooms_fd_ = eventfd(0, EFD_NONBLOCK);
 
@@ -166,7 +168,7 @@ public:
         std::optional<std::array<std::string, 5>> user;
         {
             std::lock_guard lock(db_mutex);
-            auto res = db.query(std::format(
+            auto res = db_.query(std::format(
                 "SELECT password_hash, id, name, number, create_time FROM users WHERE number = '{}'",
                 number
             ));
