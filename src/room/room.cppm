@@ -89,11 +89,13 @@ public:
 };
 
 
-struct PendingMatch {
+export struct PendingMatch {
     int id{};
-    bool confirm_timeout{};
+    bool is_confirm_timeout{};
     std::shared_ptr<Room> room_a, room_b;
     std::set<int> confirmed{};
+
+    constexpr static std::chrono::seconds confirm_timeout{30};
 };
 
 class MatchTree {
@@ -215,14 +217,12 @@ class RoomManager {
     // 匹配中的房间列表
     MatchTree matching_rooms_;
     Timer pending_match_timeout_timer_;
-    constexpr static int confirm_timeout = 30;
     // 等待确认的房间
     std::vector<std::shared_ptr<PendingMatch>> pending_matches_;
 
     std::mutex free_rooms_mutex_;
     std::mutex matching_rooms_mutex_;
     std::mutex pending_matches_mutex_;
-
 public:
     RoomManager() = default;
 
@@ -237,13 +237,6 @@ public:
     std::vector<std::shared_ptr<PendingMatch>> try_match() {
         auto res = matching_rooms_.try_match();
         pending_matches_.append_range(res);
-
-        for (auto &pending_match : res) {
-            pending_match_timeout_timer_.add_task([pending_match] {
-                pending_match->confirm_timeout = true;
-            }, std::chrono::seconds{confirm_timeout});
-        }
-
         return res;
     }
 

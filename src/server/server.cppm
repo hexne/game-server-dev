@@ -40,6 +40,7 @@ export class Server {
     RoomManager room_manager_;
     int match_timer_fd_;
     int remove_closed_rooms_fd_;
+    int pending_match_timeout_fd_;
     Timer timer_;
     Database db_;
     std::mutex db_mutex;
@@ -79,12 +80,19 @@ export class Server {
         if (res.empty())
             return;
 
+        // 匹配成功之后，除了告诉用户匹配状态，同时插入匹配超时定时器
         for (auto &pending_match : res) {
             const auto &[pending_match_id, _, room_a, room_b, _] = *pending_match;
             for (auto &user_id : room_a->users())
                 match_success(user_id, pending_match_id);
             for (auto &user_id : room_b->users())
                 match_success(user_id, pending_match_id);
+
+            timer_.add_task([pending_match, pending_match_id, this] {
+                // @FIXME 需要考虑pending_match 后续不存在的问题
+                pending_match->is_confirm_timeout = true;
+                message::send_signal(pending_match_timeout_fd_, pending_match_id);
+            }, PendingMatch::confirm_timeout);
         }
     }
 
@@ -112,7 +120,11 @@ export class Server {
     void match_reject(std::span<char> msg, TCP *socket) {
         int user_id = message::read(msg.data());
         int pending_match_id = message::read(msg.data() + sizeof(int));
+        match_cancel(pending_match_id);
+    }
 
+    // 通知某个已经匹配成功的对局取消
+    void match_cancel(int pending_match_id) {
         auto pending_match = room_manager_.search_pending_match(pending_match_id);
 
         auto all_users = pending_match->room_a->users();
@@ -120,6 +132,7 @@ export class Server {
 
         room_manager_.pending_match_cancel(pending_match_id);
 
+        // @NOTE, 对局取消只有可能是有用户拒绝了对局，显示某用户拒绝对局即可，甚至无需该用户id
         char buf[512]{};
         const auto size = message::write(buf, header::type::match_cancel);
         for (auto user : all_users) {
@@ -145,6 +158,7 @@ public:
     }), db_("root", "123456", "game") {
         match_timer_fd_ = eventfd(0, EFD_NONBLOCK);
         remove_closed_rooms_fd_ = eventfd(0, EFD_NONBLOCK);
+        pending_match_timeout_fd_ = eventfd(0, EFD_NONBLOCK);
 
         timer_.add_repeat_task([this] {
             message::send_signal(match_timer_fd_);
@@ -336,6 +350,7 @@ public:
         epoll.add(server_listen_->fd(), epoll_in | epoll_et);
         epoll.add(match_timer_fd_, epoll_in);
         epoll.add(remove_closed_rooms_fd_, epoll_in);
+        epoll.add(pending_match_timeout_fd_, epoll_in);
 
         Log().push_log("epoll ADD");
 
@@ -365,6 +380,11 @@ public:
                 if (fd == remove_closed_rooms_fd_) {
                     message::consume_signal(fd);
                     room_manager_.remove_closed_rooms();
+                    continue;
+                }
+                if (fd == pending_match_timeout_fd_) {
+                    int pending_match_id = message::consume_signal(fd);
+                    match_cancel(pending_match_id);
                     continue;
                 }
 

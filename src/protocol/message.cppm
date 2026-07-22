@@ -120,14 +120,14 @@ export namespace message {
         return read(span.data());
     }
 
-    void send_signal(int fd) {
-        std::uint64_t val = 1;
-        ::write(fd, &val, sizeof(val));
+    void send_signal(int fd, int value = 1) {
+        ::write(fd, &value, sizeof(value));
     }
 
-    void consume_signal(int fd) {
+    int consume_signal(int fd) {
         std::uint64_t val;
         ::read(fd, &val, sizeof(val));  // 消费事件
+        return val;
     }
 
 }
