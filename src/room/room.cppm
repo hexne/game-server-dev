@@ -234,6 +234,7 @@ public:
     void add_matching_room(std::shared_ptr<Room> &room) {
         matching_rooms_.add_matching_room(room);
     }
+    // 匹配中的房间应该调用该函数
     void add_pending_room(std::shared_ptr<PendingMatch> &room) {
         auto [_, _, room_a, room_b, _] = *room;
         room_a->status = RoomStatus::matched;
@@ -250,6 +251,11 @@ public:
 
     std::vector<std::shared_ptr<PendingMatch>> try_match() {
         auto res = matching_rooms_.try_match();
+
+        // 将匹配到的结果放到pending_match队列中
+        for (auto &pending_match : res)
+            add_pending_room(pending_match);
+
         pending_matches_.append_range(res);
         return res;
     }
