@@ -53,7 +53,84 @@ export class Server {
         { header::type::room_leave, &Server::room_leave },
         { header::type::room_chat, &Server::room_chat },
         { header::type::match_join, &Server::match_join },
+        { header::type::match_accept, &Server::match_accept },
+        { header::type::match_reject, &Server::match_reject },
     };
+
+    // 匹配成功, 向id发送匹配成功信息
+    void match_success(int user_id, int pending_match_id) {
+        auto status = user_state_manager.search_user_state_by_user_id(user_id);
+        if (!status)
+            return;
+        auto &tcp = status->tcp;
+        if (!tcp)
+            return;
+
+        char buf[512]{};
+        auto size = message::write(buf, header::type::match_success, pending_match_id);
+        tcp->send_now(std::span{buf, size});
+    }
+
+    // 尝试匹配
+    void try_match() {
+        auto res = room_manager_.try_match();
+        if (res.empty())
+            return;
+
+        for (auto &pending_match : res) {
+            const auto &[pending_match_id, room_a, room_b, _] = *pending_match;
+            for (auto &user_id : room_a->users())
+                match_success(user_id, pending_match_id);
+            for (auto &user_id : room_b->users())
+                match_success(user_id, pending_match_id);
+        }
+    }
+
+    // 用户同意匹配
+    void match_accept(std::span<char> msg, TCP *socket) {
+        int user_id = message::read(msg.data());
+        int pending_match_id = message::read(msg.data() + sizeof(int));
+
+        // 插入用户
+        auto pending_match = room_manager_.search_pending_match(pending_match_id);
+        pending_match->confirmed.insert(user_id);
+        int all_user_count = pending_match->room_a->users().size() + pending_match->room_b->users().size();
+
+        // 还有用户没有确认
+        if (pending_match->confirmed.size() < all_user_count) {
+            ; // 继续等待
+        }
+        // 所有用户都确认了
+        else if (pending_match->confirmed.size() == all_user_count) {
+            ; // @TODO 开始对局
+        }
+    }
+
+    // 用户拒绝匹配, 所有用户取消匹配
+    void match_reject(std::span<char> msg, TCP *socket) {
+        int user_id = message::read(msg.data());
+        int pending_match_id = message::read(msg.data() + sizeof(int));
+
+        auto pending_match = room_manager_.search_pending_match(pending_match_id);
+
+        auto all_users = pending_match->room_a->users();
+        all_users.append_range(pending_match->room_b->users());
+
+        room_manager_.pending_match_cancel(pending_match_id);
+
+        char buf[512]{};
+        const auto size = message::write(buf, header::type::match_cancel);
+        for (auto user : all_users) {
+
+            auto user_status = user_state_manager.search_user_state_by_user_id(user);
+            if (!user_status)
+                continue;
+            auto &tcp = user_status->tcp;
+            if (!tcp)
+                continue;
+            tcp->send_now(std::span{buf, size});
+        }
+    }
 
 public:
 
@@ -235,7 +312,6 @@ public:
 
             user_state->tcp->send_now(std::span{buf, size});
         }
-
     }
     void match_join(std::span<char> msg, TCP *socket) {
 
@@ -244,29 +320,10 @@ public:
 
         // 把房间添加到匹配队列中
         room_manager_.add_matching_room(room);
-        auto res = room_manager_.try_match();
 
-        // 通知用户确认
-        if (res.empty())
-            return;
-
-        for (auto &pending : res) {
-            auto &[room_a, room_b, _] = *pending;
-
-            auto users = room->users();
-            for (auto user : users) {
-                auto user_status = user_state_manager.search_user_state_by_user_id(user);
-                if (!user_status)
-                    return;
-                auto &socket = user_status->tcp;
-                if (!socket)
-                    return;
-
-                // @TODO, 发送需要确认对局的信息
-            }
-        }
-
+        try_match();
     }
+
 
     void run() {
         Epoll epoll;
@@ -299,9 +356,8 @@ public:
                     continue;
                 }
                 if (fd == match_timer_fd_) {
-                    // @TODO, 队列变化，并重新触发匹配事件
                     message::consume_signal(fd);
-
+                    try_match();
                     continue;
                 }
                 if (fd == remove_closed_rooms_fd_) {

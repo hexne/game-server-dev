@@ -36,6 +36,8 @@ export namespace header {
         match_join,
         match_cancel,
         match_success,
+        match_accept,
+        match_reject,
 
 
         // 系统/错误

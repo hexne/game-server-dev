@@ -90,11 +90,14 @@ public:
 
 
 struct PendingMatch {
+    int id{};
+    bool confirm_timeout{};
     std::shared_ptr<Room> room_a, room_b;
     std::set<int> confirmed{};
 };
 
 class MatchTree {
+    PendingMatchIDGenerator pending_match_id_generator_;
     Timer match_level_timer_;
     std::map<int, std::vector<std::shared_ptr<Room>>> tree_;
     std::mutex match_tree_mutex_;
@@ -132,6 +135,7 @@ public:
             tree_.erase(index);
     }
 
+    // 放宽匹配等级
     void relax_match_level() {
         std::lock_guard lock(match_tree_mutex_);
         for (auto &[index, vec] : tree_) {
@@ -168,6 +172,10 @@ public:
                 auto &room_a = all_rooms[i];
                 auto &room_b = all_rooms[j];
 
+                if (room_a->status == RoomStatus::matched
+                    || room_b->status == RoomStatus::matched)
+                    continue;
+
                 int match_level_max = std::max(
                     static_cast<int>(room_a->status),
                     static_cast<int>(room_b->status)
@@ -189,7 +197,7 @@ public:
 
                 room_a->status = RoomStatus::matched;
                 room_b->status = RoomStatus::matched;
-                ret.emplace_back(std::make_shared<PendingMatch>(room_a, room_b));
+                ret.emplace_back(std::make_shared<PendingMatch>(pending_match_id_generator_.next(), false, room_a, room_b));
             }
         }
 
@@ -198,6 +206,7 @@ public:
 
         return ret;
     }
+
 };
 
 class RoomManager {
@@ -205,19 +214,14 @@ class RoomManager {
     std::vector<std::shared_ptr<Room>> free_rooms_;
     // 匹配中的房间列表
     MatchTree matching_rooms_;
+    Timer pending_match_timeout_timer_;
+    constexpr static int confirm_timeout = 30;
     // 等待确认的房间
     std::vector<std::shared_ptr<PendingMatch>> pending_matches_;
-
 
     std::mutex free_rooms_mutex_;
     std::mutex matching_rooms_mutex_;
     std::mutex pending_matches_mutex_;
-
-    bool try_match(const std::shared_ptr<Room> &room_a, const std::shared_ptr<Room> &room_b, int rank_distance) {
-        if (std::abs(room_a->match_rank_ - room_b->match_rank_) < rank_distance)
-            return true;
-        return false;
-    }
 
 public:
     RoomManager() = default;
@@ -231,19 +235,23 @@ public:
         matching_rooms_.add_matching_room(room);
     }
     void add_pending_room(std::shared_ptr<PendingMatch> &room) {
-        auto [room_a, room_b, _] = *room;
+        auto [_, _, room_a, room_b, _] = *room;
         room_a->status = RoomStatus::matched;
         room_b->status = RoomStatus::matched;
 
+
         std::lock_guard lock(pending_matches_mutex_);
         pending_matches_.push_back(room);
+
+        pending_match_timeout_timer_.add_task([room] {
+            room->confirm_timeout = true;
+        }, std::chrono::seconds{confirm_timeout});
     }
 
-    // @TODO, 先简易匹配把逻辑整通
     std::vector<std::shared_ptr<PendingMatch>> try_match() {
-        std::vector<std::shared_ptr<PendingMatch>> ret;
-
-        return ret;
+        auto res = matching_rooms_.try_match();
+        pending_matches_.append_range(res);
+        return res;
     }
 
     void remove_closed_rooms() {
@@ -253,6 +261,36 @@ public:
         std::erase_if(free_rooms_, [](const auto& room) {
             return room->status == RoomStatus::closed;
         });
+    }
+
+    // 取消对局，房间取消匹配
+    void pending_match_cancel(int id) {
+        auto pending_match = search_pending_match(id);
+        auto &[_, _, room_a, room_b, _] = *pending_match;
+
+        {
+            std::lock_guard lock(pending_matches_mutex_);
+            std::erase_if(pending_matches_, [id](std::shared_ptr<PendingMatch> &cur) {
+                return cur->id = id;
+            });
+        }
+
+        // @TODO, 此处会让房间取消匹配,进入空闲房间
+        {
+            std::lock_guard lock(free_rooms_mutex_);
+            free_rooms_.push_back(room_a);
+            free_rooms_.push_back(room_b);
+        }
+    }
+
+    std::shared_ptr<PendingMatch> search_pending_match(int id) {
+        std::lock_guard lock(matching_rooms_mutex_);
+        const auto it = std::ranges::find_if(pending_matches_, [id](const std::shared_ptr<PendingMatch> &cur) {
+            return id == cur->id;
+        });
+        if (it == pending_matches_.end())
+            return nullptr;
+        return *it;
     }
 
 };

@@ -33,12 +33,15 @@ export class Client {
         { header::type::room_invite_message, &Client::room_invite_message },
         { header::type::room_join, &Client::room_join },
         { header::type::room_leave, &Client::room_leave },
-        { header::type::room_chat, &Client::room_chat }
+        { header::type::room_chat, &Client::room_chat },
+        { header::type::match_success, &Client::match_success },
+        { header::type::match_cancel, &Client::match_cancel },
     };
 
     void login_false(std::span<char> msg) {
         Log().push_log("login error");
     }
+
     void login_true(std::span<char> msg) {
         std::string user_info(msg.begin(), msg.end());
         std::array<std::string, 4> infos{};
@@ -70,6 +73,7 @@ export class Client {
         room_ = RoomInfo{.id = room_id, .master = master_id};
     }
 
+    // 收到房间邀请信息
     void room_invite_message(std::span<char> msg) {
         int user1 = message::read(msg.data());
         int user2 = message::read(msg.data() + sizeof(int));
@@ -94,13 +98,14 @@ export class Client {
         auto size = message::write(buf, header::type::room_invite_reject, user_id(), user1, user2);
         tcp_.send_now(std::span{buf, size});
     }
-    // 接收服务器发送的拒绝信息
+
+    // 用户拒绝了你的房间邀请信息
     void room_invite_reject(std::span<char> msg) {
         int id = message::read(msg);
         std::println("{} rejected you", id);
     }
 
-    // room_join <user> <room_id>
+    // 有用户加入房间
     void room_join(std::span<char> msg) {
         int user = message::read(msg.data());
         int room_id = message::read(msg.data() + sizeof(int));
@@ -113,6 +118,7 @@ export class Client {
         // 否则查询用户信息并显示
     }
 
+    // 有用户离开房间
     void room_leave(std::span<char> msg) {
         auto id = message::read(msg.data());
 
@@ -129,10 +135,31 @@ export class Client {
 
         if (user_id == this->user_id())
             return;
-        else
-            std::println("{} : {}", user_id, message);
+        std::println("{} : {}", user_id, message);
     }
 
+    // 收到匹配成功信息
+    void match_success(std::span<char> msg) {
+        int id = message::read(msg.data());
+        match_accept(id);
+    }
+    // 接受对局
+    void match_accept(int id) {
+        char buf[512]{};
+        auto size = message::write(buf, header::type::match_accept, id, id);
+        tcp_.send_now(std::span{buf, size});
+    }
+    // 拒绝对局
+    void match_reject(int id) {
+        char buf[512]{};
+        auto size = message::write(buf, header::type::match_reject, id, id);
+        tcp_.send_now(std::span{buf, size});
+    }
+
+    // 对局取消
+    void match_cancel(std::span<char> msg) {
+        ; // 取消对局，修改客户端UI
+    }
 public:
     explicit Client(const Address &address) : tcp_(std::move(address)) {
         auto res = tcp_.connect();
@@ -224,7 +251,7 @@ public:
         tcp_.send_now(std::span{buf, size});
     }
 
-    // 主动发送消息
+    // 主动在房间中发送消息
     void room_message(std::string msg) {
         char buf[512]{};
         if (!user_ || !room_)
@@ -233,6 +260,7 @@ public:
         tcp_.send_now(std::span{buf, size});
     }
 
+    // 开始匹配
     void match_join() {
         if (room_ == std::nullopt)
             return;
@@ -244,6 +272,8 @@ public:
         auto size = message::write(buf, header::type::match_join, room_->id);
         tcp_.send_now(std::span{buf, size});
     }
+
+
 
     auto rounter(std::span<char> msg) {
         auto header = message::read_header(msg);

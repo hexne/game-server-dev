@@ -17,11 +17,13 @@ public:
     }
 };
 
-export struct RoomTag  {};
-export struct MatchTag {};
-export struct GameTag  {};
+struct RoomTag  {};
+struct MatchTag {};
+struct PendingMatchTag {};
+struct GameTag  {};
 
 export using RoomIDGenerator = ID<RoomTag>;
 export using MatchIDGenerator = ID<MatchTag>;
+export using PendingMatchIDGenerator = ID<PendingMatchTag>;
 export using GameIDGenerator = ID<GameTag>;
 
