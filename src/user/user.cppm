@@ -23,6 +23,7 @@ struct UserProfile {
     std::string name{};
     std::string number{};
     int level{};
+    int exp{};
     int rank{};
     Time create_time{};
 };
@@ -58,7 +59,7 @@ public:
     User(int id, int tcp_fd, std::unique_ptr<TCP> tcp)
         : id_(id), tcp_fd_(tcp_fd), tcp_(std::move(tcp)) {  }
 
-    // "id", "name", "number", "password_hash", "create_time", "level", "rank"
+    // "id", "name", "number", "password_hash", "create_time", "level", "exp", "rank"
     explicit User(const std::string &user_string) {
         update_user_info(user_string);
     }
@@ -70,12 +71,13 @@ public:
         profile_.password_hash = vec[3];
         profile_.create_time = Time(vec[4]);
         profile_.level = std::stoi(vec[5]);
-        profile_.rank = std::stoi(vec[6]);
+        profile_.exp = std::stoi(vec[6]);
+        profile_.rank = std::stoi(vec[7]);
     }
 
     std::string to_string() const {
         return std::format("{}|{}|{}|{}|{}|{}|{}",
-            id_, name(), number(), password_hash(), create_time().get_string(), level(), rank());
+            id_, name(), number(), password_hash(), create_time().get_string(), level(), exp(), rank());
     }
 
     void id(int id) {
@@ -101,6 +103,9 @@ public:
     }
     int level() const {
         return profile_.level;
+    }
+    int exp() const {
+        return profile_.exp;
     }
     int rank() const {
         return profile_.rank;

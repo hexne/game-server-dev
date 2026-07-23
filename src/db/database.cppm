@@ -227,7 +227,7 @@ Result SQLBuilder::exec() {
 }
 
 export std::string search_user_profile(Database &db, std::string number) {
-    auto res = db->select("id", "name", "number", "password_hash", "create_time", "level", "rank")
+    auto res = db->select("id", "name", "number", "password_hash", "create_time", "level", "exp", "rank")
         .from("users")
         .where("number = '{}'", number)
         .exec();
@@ -236,5 +236,5 @@ export std::string search_user_profile(Database &db, std::string number) {
         return {};
 
     return std::format("{}|{}|{}|{}|{}|{}|{}",
-        res[0], res[1], res[2], res[3], res[4], res[5], res[6]);
+        res[0], res[1], res[2], res[3], res[4], res[5], res[6], res[7]);
 }
