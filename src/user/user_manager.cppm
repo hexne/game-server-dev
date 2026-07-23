@@ -57,18 +57,8 @@ public:
         }
     }
 
-    std::shared_ptr<User> search_user(const int user_id) {
-        std::lock_guard lock(users_mutex_);
-        for (auto &user : users_) {
-            if (user->id() == user_id) {
-                return user;
-            }
-        }
-        return nullptr;
-    }
-
     TCP* search_user_tcp(const int user_id) {
-        auto user = search_user(user_id);
+        auto user = search_user_by_id(user_id);
         if (!user)
             return nullptr;
         if (!user->tcp())
