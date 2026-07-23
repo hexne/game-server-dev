@@ -11,32 +11,18 @@ import log;
 import net;
 import database;
 import message;
-import online_user;
+import online_user_list;
 import time;
 import room;
 import std;
-import user_state;
+import user;
+import user_manager;
 import timer;
 
 
-
-
-
-
-std::set<std::shared_ptr<Room>> online_rooms;
-
-std::shared_ptr<Room> search_room_by_id(int id) {
-    for (auto room : online_rooms) {
-        if (room->id() == id)
-            return room;
-    }
-    return {};
-}
-
 export class Server {
     std::unique_ptr<TCP> server_listen_;
-    UserStateManager user_state_manager;
-    OnlineUserList online_user_list;
+    UserManager user_manager_;
     RoomManager room_manager_;
     int match_timer_fd_;
     int remove_closed_rooms_fd_;
@@ -62,10 +48,10 @@ export class Server {
 
     // 匹配成功, 向id发送匹配成功信息
     void match_success(int user_id, int pending_match_id) {
-        auto status = user_state_manager.search_user_state_by_user_id(user_id);
-        if (!status)
+        auto user = user_manager_.search_user_by_id(user_id);
+        if (!user)
             return;
-        auto &tcp = status->tcp;
+        auto &tcp = user->tcp();
         if (!tcp)
             return;
 
@@ -135,12 +121,12 @@ export class Server {
         // @NOTE, 对局取消只有可能是有用户拒绝了对局，显示某用户拒绝对局即可，甚至无需该用户id
         char buf[512]{};
         const auto size = message::write(buf, header::type::match_cancel);
-        for (auto user : all_users) {
+        for (auto user_id : all_users) {
 
-            auto user_status = user_state_manager.search_user_state_by_user_id(user);
-            if (!user_status)
+            auto user = user_manager_.search_user_by_id(user_id);
+            if (!user)
                 continue;
-            auto &tcp = user_status->tcp;
+            auto &tcp = user->tcp();
             if (!tcp)
                 continue;
             tcp->send_now(std::span{buf, size});
@@ -149,13 +135,7 @@ export class Server {
 
 public:
 
-    Server() : online_user_list([this](int id) {
-        auto user = user_state_manager.search_user_state_by_user_id(id);
-         if (!user)
-             return;
-         auto fd = user->fd;
-         user_state_manager.remove_fd(fd);
-    }), db_("root", "123456", "game") {
+    Server(): db_("root", "123456", "game") {
         match_timer_fd_ = eventfd(0, EFD_NONBLOCK);
         remove_closed_rooms_fd_ = eventfd(0, EFD_NONBLOCK);
         pending_match_timeout_fd_ = eventfd(0, EFD_NONBLOCK);
@@ -179,40 +159,36 @@ public:
         // + 1 跳过 ':'
         std::string password_hash(pos + 1, msg.end());
 
-        std::optional<std::array<std::string, 5>> user;
+        std::string user_info;
         {
             std::lock_guard lock(db_mutex);
-            auto res = db_.query(std::format(
-                "SELECT password_hash, id, name, number, create_time FROM users WHERE number = '{}'",
-                number
-            ));
-
-            if (!res.empty()) {
-                user = std::array<std::string, 5> {
-                    res[0],
-                    res[1],
-                    res[2],
-                    res[3],
-                    res[4]
-                };
-            }
+            user_info = search_user_profile(db_, number);
         }
 
-        if (!user) {
+        auto login_false = [socket] {
             char buf[header::header_size]{};
             auto size = message::write(buf, header::type::login_false);
             socket->send_now(std::span{buf, size});
+            Log().push_log("login error");
+        };
+        if (user_info.empty()) {
+            login_false();
+            return;
         }
-        else {
-            auto send_msg = std::format("{}:{}:{}:{}", (*user)[1], (*user)[2], (*user)[3], (*user)[4]);
-            char buf[1024]{};
-            auto size = message::write(buf, header::type::login_true, std::span{send_msg.data(), send_msg.size()});
-            socket->send_now(std::span{buf, size});
 
-            // 登录成功，直接注册到在线列表
-            online_user_list.update(std::stoi((*user)[1]), Time::now());
-            user_state_manager.bind_user(std::stoi((*user)[1]), socket->fd());
+        auto user = std::make_shared<User>(user_info);
+        if (user->password_hash() != password_hash) {
+            login_false();
+            return;
         }
+        char buf[512]{};
+        auto size = message::write(buf, header::type::login_true, std::span{user_info.data(), user_info.size()});
+        socket->send_now(std::span{buf, size});
+
+        auto update_user = user_manager_.search_user_by_fd(socket->fd());
+        if (!update_user)
+            return;
+        update_user->update_user_info(user_info);
     }
 
     // heart <id>
@@ -220,10 +196,8 @@ public:
         if (msg.size() != sizeof(int))
             throw std::invalid_argument("invalid heart message");
 
-        int id = message::read(msg);
-
-        online_user_list.update(id, Time::now());
-        // Log().push_log(std::format("Server get {} heart", id));
+        int user_id = message::read(msg);
+        user_manager_.heart_update(user_id);
     }
 
     // room_create <user_id>
@@ -231,7 +205,8 @@ public:
         int user_id = message::read(msg);
         // 创建一个room, 将id放到这个room中
         auto room = std::make_shared<Room>(Room::room_create(user_id));
-        online_rooms.insert(room);
+        room_manager_.add_free_room(room);
+
         char buf[1024]{};
         auto size = message::write(buf, header::type::room_create_true, room->id(), room->master());
         socket->send_now(std::span{buf, size});
@@ -248,8 +223,12 @@ public:
         auto size = message::write(buf, header::type::room_invite_message, user1, user2, room_id);
         std::println(std::cout, "{} invite {} to {}", user1, user2, room_id);
 
-        auto user_state = user_state_manager.search_user_state_by_user_id(user2);
-        auto tcp = user_state->tcp.get();
+        auto user = user_manager_.search_user_by_id(user2);
+        if (!user)
+            return;
+        auto &tcp = user->tcp();
+        if (!tcp)
+            return;
 
         tcp->send_now(std::span{buf, size});
     }
@@ -258,19 +237,24 @@ public:
         int user = message::read(msg);
         int room_id = message::read(msg.data() + sizeof(int));
 
-        auto room = search_room_by_id(room_id);
+        auto room = room_manager_.search_room(room_id);
 
         room->add_user(user);
 
         // @TODO 房间应该加锁
         auto users = room->users();
         for (auto id : users) {
-            auto user_socket = user_state_manager.search_user_state_by_user_id(id)->tcp.get();
+            auto cur_user = user_manager_.search_user_by_id(id);
+            if (!cur_user)
+                continue;
+            auto &tcp = cur_user->tcp();
+            if (!tcp)
+                continue;
 
             char buf[512]{};
             auto size = message::write(buf, header::type::room_join, id, room_id, room->master());
 
-            user_socket->send_now(std::span{buf, size});
+            tcp->send_now(std::span{buf, size});
         }
     }
 
@@ -278,13 +262,16 @@ public:
         auto user1 = message::read(msg.data());
         auto user2 = message::read(msg.data() + sizeof(int));
 
-        auto user = user_state_manager.search_user_state_by_user_id(user2);
+        auto user = user_manager_.search_user_by_id(user2);
         if (!user)
+            return;
+        auto &tcp = user->tcp();
+        if (!tcp)
             return;
 
         char buf[512]{};
         auto size = message::write(buf, header::type::room_invite_reject, user1);
-        user->tcp->send_now(std::span{buf, size});
+        tcp->send_now(std::span{buf, size});
     }
 
     // room_leave <user> <room_id>
@@ -292,18 +279,23 @@ public:
         auto id = message::read(msg.data());
         auto room_id = message::read(msg.data() + sizeof(int));
 
-        auto room = search_room_by_id(room_id);
+        auto room = room_manager_.search_room(room_id);
         if (!room)
             return;
         auto users = room->users();
 
         room->remove_user(id);
 
-        for (auto user : users) {
+        for (auto user_id : users) {
             char buf[512]{};
             auto size = message::write(buf, header::type::room_leave, id, room_id);
 
-            auto tcp = user_state_manager.search_user_state_by_user_id(user)->tcp.get();
+            auto user = user_manager_.search_user_by_id(user_id);
+            if (!user)
+                continue;
+            auto &tcp = user->tcp();
+            if (!tcp)
+                continue;
             tcp->send_now(std::span{buf, size});
         }
     }
@@ -313,26 +305,28 @@ public:
         auto id = message::read(msg.data());
         auto room_id = message::read(msg.data() + sizeof(int));
 
-        auto room = search_room_by_id(room_id);
+        auto room = room_manager_.search_room(room_id);
         if (!room)
             return;
 
         auto users = room->users();
-        for (auto user : users) {
+        for (auto user_id : users) {
             char buf[512]{};
             auto size = message::write(buf, header::type::room_chat, msg);
 
-            auto user_state = user_state_manager.search_user_state_by_user_id(user);
-            if (!user_state || !user_state->tcp)
-                return;
-
-            user_state->tcp->send_now(std::span{buf, size});
+            auto user = user_manager_.search_user_by_id(user_id);
+            if (!user)
+                continue;
+            auto &tcp = user->tcp();
+            if (!tcp)
+                continue;
+            tcp->send_now(std::span{buf, size});
         }
     }
     void match_join(std::span<char> msg, TCP *socket) {
 
         int room_id = message::read(msg.data());
-        auto room = search_room_by_id(room_id);
+        auto room = room_manager_.search_room(room_id);
 
         // 把房间添加到匹配队列中
         room_manager_.add_matching_room(room);
@@ -367,7 +361,7 @@ public:
                     TCP client = server_listen_->accept();
                     int client_fd = client.fd();
                     Log().push_log("Server accept a new connect");
-                    user_state_manager.add_fd(client_fd, std::make_unique<TCP>(std::move(client)));
+                    user_manager_.add_fd(client_fd, std::make_unique<TCP>(std::move(client)));
 
                     epoll.add(client_fd, epoll_in | epoll_out | epoll_et);
                     continue;
@@ -388,11 +382,12 @@ public:
                     continue;
                 }
 
-                auto state = user_state_manager.search_user_state_by_fd(fd);
-                if (!state) continue;
-
-                TCP *tcp = state->tcp.get();
-
+                auto user = user_manager_.search_user_by_fd(fd);
+                if (!user)
+                    continue;
+                auto &tcp = user->tcp();
+                if (!tcp)
+                    continue;
                 if (events[i].events & epoll_in | epoll_et)
                     tcp->get_message_impl();
 
@@ -404,11 +399,11 @@ public:
                     auto type = message::read_header(span);
                     if (!events_router.contains(type))
                         throw std::invalid_argument("invalid server type");
-                    (this->*events_router[type])(span.subspan(header::header_size), tcp);
+                    (this->*events_router[type])(span.subspan(header::header_size), tcp.get());
                 }
 
                 if (events[i].events & (epoll_hup | epoll_err)) {
-                    user_state_manager.remove_fd(fd);
+                    user_manager_.remove_user_by_fd(fd);
                 }
 
             }

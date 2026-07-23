@@ -15,6 +15,7 @@ import net;
 import user;
 import message;
 import timer;
+import hash256;
 
 struct RoomInfo {
     int id;
@@ -42,27 +43,15 @@ export class Client {
         Log().push_log("login error");
     }
 
+    // id:name:number
     void login_true(std::span<char> msg) {
+        std::println("login true");
         std::string user_info(msg.begin(), msg.end());
-        std::array<std::string, 4> infos{};
-        size_t start = 0;
-        size_t idx = 0;
+        user_ = User(user_info);
 
-        while (idx < 3) {
-            size_t pos = user_info.find(':', start);
-            if (pos == std::string::npos)
-                throw std::invalid_argument("invalid user info");
-            infos[idx++] = user_info.substr(start, pos - start);
-            start = pos + 1;
-        }
-
-        infos[3] = user_info.substr(start);
-        user_ = User(infos[0], infos[1], infos[2], infos[3]);
-        user_->status(UserStatus::online);
-
-        auto id = user_->id();
-        timer_.add_repeat_task([this, id] {
-            send_heart(id);
+        int user_id = user_->id();
+        timer_.add_repeat_task([this, user_id] {
+            send_heart(user_id);
         }, std::chrono::seconds{5});
 
     }
@@ -199,21 +188,21 @@ public:
     }
 
     int user_id() {
-        if (user_ == std::nullopt)
+        if (!user_)
             return -1;
         return user_->id();
     }
-
-    auto user_name() {
-        if (user_ == std::nullopt)
-            return std::string{};
+    std::string user_name() {
+        if (!user_)
+            return "";
         return user_->name();
     }
-    auto user_number() {
-        if (user_ == std::nullopt)
-            return std::string{};
+    std::string user_number() {
+        if (!user_)
+            return "";
         return user_->number();
     }
+
     auto user_status() {
         if (user_ == std::nullopt)
             return std::string{};

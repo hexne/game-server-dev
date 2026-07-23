@@ -217,10 +217,24 @@ public:
 
     SQLBuilder builder_{this};
     auto operator -> () {
+        builder_ = SQLBuilder(this);
         return &builder_;
     }
 };
 
 Result SQLBuilder::exec() {
     return db_->query(build());
+}
+
+export std::string search_user_profile(Database &db, std::string number) {
+    auto res = db->select("id", "name", "number", "password_hash", "create_time", "level", "rank")
+        .from("users")
+        .where("number = '{}'", number)
+        .exec();
+
+    if (res.empty())
+        return {};
+
+    return std::format("{}|{}|{}|{}|{}|{}|{}",
+        res[0], res[1], res[2], res[3], res[4], res[5], res[6]);
 }

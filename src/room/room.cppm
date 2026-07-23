@@ -209,6 +209,16 @@ public:
         return ret;
     }
 
+
+    std::shared_ptr<Room> search_room(int room_id) {
+        for (auto &[rank, vec] : tree_) {
+            for (auto &room : vec) {
+                if (room->id() == room_id)
+                    return room;
+            }
+        }
+        return nullptr;
+    }
 };
 
 class RoomManager {
@@ -277,6 +287,32 @@ public:
         if (it == pending_matches_.end())
             return nullptr;
         return *it;
+    }
+
+    std::shared_ptr<Room> search_room(const int room_id) {
+        {
+            std::lock_guard lock(free_rooms_mutex_);
+            for (auto &room : free_rooms_)
+                if (room->id() == room_id)
+                    return room;
+        }
+        {
+            std::lock_guard lock(matching_rooms_mutex_);
+            auto room = matching_rooms_.search_room(room_id);
+            if (room)
+                return room;
+        }
+        {
+            std::lock_guard lock(pending_matches_mutex_);
+            for (auto &pending_match : pending_matches_) {
+                auto &[_, _, room_a, room_b, _] = *pending_match;
+                if (room_a->id() == room_id)
+                    return room_a;
+                if (room_b->id() == room_id)
+                    return room_b;
+            }
+        }
+        return nullptr;
     }
 
 };
