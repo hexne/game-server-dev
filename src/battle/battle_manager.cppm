@@ -15,5 +15,9 @@ export class BattleManager {
 public:
     BattleManager() = default;
 
+    void add_battle(const std::vector<int> &team_a, std::vector<int> team_b) {
+
+    }
+
 
 };

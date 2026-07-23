@@ -18,12 +18,14 @@ import std;
 import user;
 import user_manager;
 import timer;
+import battle_manager;
 
 
 export class Server {
     std::unique_ptr<TCP> server_listen_;
     UserManager user_manager_;
     RoomManager room_manager_;
+    BattleManager battle_manager_;
     int match_timer_fd_;
     int remove_closed_rooms_fd_;
     int pending_match_timeout_fd_;
@@ -98,7 +100,9 @@ export class Server {
         }
         // 所有用户都确认了
         else if (pending_match->confirmed.size() == all_user_count) {
-            ; // @TODO 开始对局
+            // @TODO 开始对局
+            // battle_manager_.add_battle();
+
         }
     }
 
