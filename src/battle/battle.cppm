@@ -28,9 +28,39 @@ public:
 
     void start_battle() {  }
 
+    // 用户加载完毕
+    void user_loaded(int user_id) {
+        if (team_a_.have_user(user_id))
+            team_a_.user_loaded(user_id);
+        else if (team_b_.have_user(user_id))
+            team_b_.user_loaded(user_id);
+    }
+
+    bool all_players_picked() {
+        return team_a_.all_players_picked() && team_b_.all_players_picked();
+    }
+    bool all_players_loaded() {
+        return team_a_.all_players_loaded() && team_b_.all_players_loaded();
+    }
+
     // 结束战斗，生成战斗结算
     BattleResult finish_battle() {
         return {};
     }
+
+    // 获取该对局所有用户id
+    std::vector<int> all_users() {
+        auto ret = team_a_.all_users();
+        ret.append_range(team_b_.all_users());
+        return ret;
+    }
+
+    void user_load(int user_id, int val) {
+        if (team_a_.have_user(user_id))
+            team_a_.user_load(user_id, val);
+        else if (team_b_.have_user(user_id))
+            team_b_.user_load(user_id, val);
+    }
+
 };
 

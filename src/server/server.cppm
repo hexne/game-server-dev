@@ -46,6 +46,8 @@ export class Server {
         { header::type::match_join, &Server::match_join },
         { header::type::match_accept, &Server::match_accept },
         { header::type::match_reject, &Server::match_reject },
+        { header::type::battle_pick_hero, &Server::battle_pick_hero },
+        { header::type::battle_start_load, &Server::battle_load },
     };
 
     // 匹配成功, 向id发送匹配成功信息
@@ -100,9 +102,24 @@ export class Server {
         }
         // 所有用户都确认了
         else if (pending_match->confirmed.size() == all_user_count) {
-            // @TODO 开始对局, 广播用户开始英雄选择
-            // battle_manager_.add_battle();
+            auto &[_, _, room_a, room_b, _] = *pending_match;
 
+            auto users_a = room_a->users();
+            auto users_b = room_b->users();
+            int battle_id = battle_manager_.add_battle(users_a, users_b);
+
+            char buf[512]{};
+            auto size = message::write(buf, header::type::battle_pick_hero, battle_id);
+
+            for (const auto cur_user_id : std::views::concat(users_a, users_b)) {
+                auto user = user_manager_.search_user_by_id(cur_user_id);
+                if (!user)
+                    return;
+                auto &tcp = user->tcp();
+                if (!tcp)
+                    return;
+                tcp->send_now(std::span{buf, size});
+            }
         }
     }
 
@@ -338,6 +355,57 @@ public:
         try_match();
     }
 
+    // 收到用户选择英雄后，如果所有用户都选择完成，通知客户端开始加载
+    void battle_pick_hero(std::span<char> msg, TCP *socket) {
+        auto battle_id = message::read(msg.data());
+        auto user_id = message::read(msg.data() + sizeof(int));
+        auto hero_name = static_cast<HeroName>(message::read(msg.data() + sizeof(int) * 2));
+        battle_manager_.user_pick_hero(battle_id, user_id, hero_name);
+
+        if (!battle_manager_.all_players_picked(battle_id))
+            return; // 等待其他用户选择英雄, 此处不写超时逻辑，匹配已经写过了
+
+        // 通知所有用户开始加载
+        char buf[512]{};
+        auto size = message::write(buf, header::type::battle_start_load);
+        auto all_user = battle_manager_.all_users(battle_id);
+        for (auto cur_user_id : all_user) {
+            auto user = user_manager_.search_user_by_id(cur_user_id);
+            if (!user)
+                continue;
+            auto &tcp = user->tcp();
+            if (!tcp)
+                continue;
+            tcp->send_now(std::span{buf, size});
+        }
+    }
+
+    void battle_load(std::span<char> msg, TCP *socket) {
+        int battle_id = message::read(msg.data());
+        int user_id = message::read(msg.data() + sizeof(int));
+        int val = message::read(msg.data() + sizeof(int) * 2);
+
+        battle_manager_.battle_load(battle_id, user_id, val);
+
+        if (!battle_manager_.all_players_picked(battle_id))
+            ;   // 没有全部加载完就不管
+
+
+        // 全部加载完广播所有用户开始战斗
+        char buf[512]{};
+        auto size = message::write(buf, header::type::battle_start);
+        auto all_user = battle_manager_.get_battle(battle_id)->all_users();
+        for (auto cur_user_id : all_user) {
+            auto user = user_manager_.search_user_by_id(cur_user_id);
+            if (!user)
+                continue;
+            auto &tcp = user->tcp();
+            if (!tcp)
+                continue;
+            tcp->send_now(std::span{buf, size});
+        }
+
+    }
 
     void run() {
         Epoll epoll;

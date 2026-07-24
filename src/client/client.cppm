@@ -16,6 +16,7 @@ import user;
 import message;
 import timer;
 import hash256;
+import hero;
 
 struct RoomInfo {
     int id;
@@ -24,6 +25,7 @@ struct RoomInfo {
 
 export class Client {
     std::optional<User> user_;
+    int battle_id_{};
     std::optional<RoomInfo> room_;
     TCP tcp_;
     Timer timer_;
@@ -37,6 +39,9 @@ export class Client {
         { header::type::room_chat, &Client::room_chat },
         { header::type::match_success, &Client::match_success },
         { header::type::match_cancel, &Client::match_cancel },
+        { header::type::battle_pick_hero, &Client::battle_pick_hero },
+        { header::type::battle_start_load, &Client::battle_start_load },
+        { header::type::battle_start, &Client::battle_start },
     };
 
     void login_false(std::span<char> msg) {
@@ -148,6 +153,20 @@ export class Client {
     // 对局取消
     void match_cancel(std::span<char> msg) {
         ; // 取消对局，修改客户端UI
+    }
+
+    void battle_pick_hero(std::span<char> msg) {
+        // UI修改，进入英雄选择界面
+        battle_id_ = message::read(msg.data());
+    }
+
+    void battle_start_load(std::span<char> msg) {
+        battle_load();
+    }
+
+    void battle_start(std::span<char> msg) {
+        // 开始战斗
+        // 显示地图，角色，界面等战斗信息
     }
 public:
     explicit Client(const Address &address) : tcp_(std::move(address)) {
@@ -263,6 +282,19 @@ public:
     }
 
 
+    void battle_load() {
+        auto send_load_msg = [&] (int val) {
+            char buf[512]{};
+            auto size = message::write(buf, header::type::battle_load, battle_id_, user_id(), val);
+            tcp_.send_now(std::span{buf, size});
+        };
+
+        // 加载地图...
+        send_load_msg(50);
+
+        // 加载模型...
+        send_load_msg(100);
+    }
 
     auto rounter(std::span<char> msg) {
         auto header = message::read_header(msg);
@@ -276,6 +308,14 @@ public:
 
     auto &tcp() {
         return tcp_;
+    }
+
+    // 手动发送选择的英雄
+    // battle_id, user_id, hero_name
+    void battle_pick_hero(HeroName hero_name) {
+        char buf[512]{};
+        auto size = message::write(buf, header::type::battle_pick_hero, battle_id_, user_id(), static_cast<int>(hero_name));
+        tcp_.send_now(std::span{buf, size});
     }
 };
 

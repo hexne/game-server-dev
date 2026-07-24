@@ -39,6 +39,15 @@ export namespace header {
         match_accept,
         match_reject,
 
+        // 对局
+        battle_pick_hero,
+        battle_start_load,
+        battle_load,
+        battle_start,
+        battle_end,
+        battle_victory,
+        battle_defeat,
+
 
         // 系统/错误
         error
@@ -124,6 +133,7 @@ export namespace message {
         ::write(fd, &value, sizeof(value));
     }
 
+    // @FIXME, 此处疑似不能正确读取信息
     int consume_signal(int fd) {
         std::uint64_t val;
         ::read(fd, &val, sizeof(val));  // 消费事件
