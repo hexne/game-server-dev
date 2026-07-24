@@ -7,6 +7,8 @@ module;
 export module battle;
 import std;
 import team;
+import battle_result;
+
 export class Battle {
     int id_;
     Team team_a_, team_b_;
@@ -15,5 +17,14 @@ public:
         : id_(id), team_a_(std::move(team_a)), team_b_(std::move(team_b)) {
     }
 
+    void ban() {  }
+    void pick() {  }
+
+    void start_battle() {  }
+
+    // 结束战斗，生成战斗结算
+    BattleResult finish_battle() {
+        return {};
+    }
 };
 

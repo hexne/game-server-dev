@@ -6,15 +6,32 @@
 module;
 export module team;
 import std;
+import hero;
+
 
 export class Team {
-    std::vector<int> users_;
-    std::vector<int> confirmed_;    // 0 - 100
+    // <user_id, hero>
+    std::unordered_map<int, std::shared_ptr<Hero>> users_{};
+    std::unordered_map<int, int> confirmed_{};
+
 public:
-    explicit Team(std::vector<int> users) {
-        users_ = users;
+    // 一开始没有pick角色
+    explicit Team(const std::vector<int>& users) {
+        for (auto user_id : users) {
+            users_[user_id] = nullptr;
+            confirmed_[user_id] = 0;
+        }
     }
-    std::vector<int> users() {
-        return users_;
+
+    // 获取用户选择的英雄
+    std::shared_ptr<Hero> get_player_hero(int user_id) {
+        if (!users_.contains(user_id))
+            return nullptr;
+        return users_[user_id];
     }
+
+    void user_pick_hero(int user_id, HeroName hero_name) {
+
+    }
+
 };

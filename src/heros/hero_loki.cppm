@@ -2,8 +2,10 @@
 * @Author : hexne
 * @Date   : 2026/07/23 21:12:25
 ********************************************************************************/
-
-module;
-export module loki;
+export module hero.loki;
+import hero.base;
 
 // 刺客、能量
+export class Loki : public Hero {
+
+};
