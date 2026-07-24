@@ -29,6 +29,7 @@ export class Server {
     int match_timer_fd_;
     int remove_closed_rooms_fd_;
     int pending_match_timeout_fd_;
+    int tick_fd_;
     Timer timer_;
     Database db_;
     std::mutex db_mutex;
@@ -154,12 +155,16 @@ export class Server {
         }
     }
 
+    void tick() {
+        // @TODO, 遍历所有对局，发送快照
+    }
 public:
 
     Server(): db_("root", "123456", "game") {
         match_timer_fd_ = eventfd(0, EFD_NONBLOCK);
         remove_closed_rooms_fd_ = eventfd(0, EFD_NONBLOCK);
         pending_match_timeout_fd_ = eventfd(0, EFD_NONBLOCK);
+        tick_fd_ = eventfd(0, EFD_NONBLOCK);
 
         timer_.add_repeat_task([this] {
             message::send_signal(match_timer_fd_);
@@ -168,6 +173,10 @@ public:
         timer_.add_repeat_task([this] {
             message::send_signal(remove_closed_rooms_fd_);
         }, std::chrono::minutes{1});
+
+        timer_.add_repeat_task([this] {
+            message::send_signal(tick_fd_);
+        }, std::chrono::milliseconds{1000 / 64});
 
     }
 
@@ -451,6 +460,11 @@ public:
                 if (fd == pending_match_timeout_fd_) {
                     int pending_match_id = message::consume_signal(fd);
                     match_cancel(pending_match_id);
+                    continue;
+                }
+                if (fd == tick_fd_) {
+                    message::consume_signal(fd);
+                    tick();
                     continue;
                 }
 

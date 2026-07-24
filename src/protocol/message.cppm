@@ -48,6 +48,12 @@ export namespace header {
         battle_victory,
         battle_defeat,
 
+        // 对局操作
+        battle_move,          // 移动操作
+        battle_attack,        // 普通攻击
+        battle_cast_skill,    // 技能释放
+        battle_use_item,      // 使用物品/道具
+        battle_chat,          // 对局内聊天
 
         // 系统/错误
         error
