@@ -238,3 +238,17 @@ export std::string search_user_profile(Database &db, std::string number) {
     return std::format("{}|{}|{}|{}|{}|{}|{}",
         res[0], res[1], res[2], res[3], res[4], res[5], res[6], res[7]);
 }
+
+export bool update_user_progress(Database &db, int id, int level, int exp, int rank) {
+    std::string sql = std::format(
+        "UPDATE users SET level={}, exp={}, rank={} WHERE id={}",
+        level, exp, rank, id
+    );
+
+    try {
+        db.query(sql);
+        return true;
+    } catch (const std::exception& e) {
+        return false;
+    }
+}
