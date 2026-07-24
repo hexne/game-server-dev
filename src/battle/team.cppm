@@ -8,6 +8,7 @@ export module team;
 import std;
 import hero;
 import hero_factory;
+import message;
 
 
 export class Team {
@@ -75,5 +76,24 @@ public:
         if (!confirmed_.contains(user_id))
             return;
         confirmed_[user_id] = val;
+    }
+
+    char* serialize(char *buf) {
+        char *new_pos = buf;
+        for (auto &[user_id, hero] : users_) {
+            new_pos = message::write(new_pos, user_id);
+            new_pos = hero->serialize(new_pos);
+        }
+        return new_pos;
+    }
+
+    char* deserialize(char *buf) {
+        char* new_pos = buf;
+        for (int i = 0;i < users_.size(); i++) {
+            int user_id = message::read(new_pos);
+            auto hero = users_[user_id];
+            new_pos = hero->deserialize(new_pos);
+        }
+        return new_pos;
     }
 };

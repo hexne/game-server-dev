@@ -19,6 +19,7 @@ import user;
 import user_manager;
 import timer;
 import battle_manager;
+import hero;
 
 
 export class Server {
@@ -89,8 +90,9 @@ export class Server {
 
     // 用户同意匹配
     void match_accept(std::span<char> msg, TCP *socket) {
-        int user_id = message::read(msg.data());
-        int pending_match_id = message::read(msg.data() + sizeof(int));
+        char *p = msg.data();
+        int user_id = message::read(p);
+        int pending_match_id = message::read(p);
 
         // 插入用户
         auto pending_match = room_manager_.search_pending_match(pending_match_id);
@@ -126,8 +128,9 @@ export class Server {
 
     // 用户拒绝匹配, 所有用户取消匹配
     void match_reject(std::span<char> msg, TCP *socket) {
-        int user_id = message::read(msg.data());
-        int pending_match_id = message::read(msg.data() + sizeof(int));
+        char *p = msg.data();
+        int user_id = message::read(p);
+        int pending_match_id = message::read(p);
         match_cancel(pending_match_id);
     }
 
@@ -245,9 +248,10 @@ public:
     // invite <user_id1> <user_id2> <room_id>
     // user1 invite user2 to room_id
     void room_invite(std::span<char> msg, TCP *socket) {
-        int user1 = message::read(msg);
-        int user2 = message::read(msg.data() + sizeof(int));
-        int room_id = message::read(msg.data() + sizeof(int) * 2);
+        char *p = msg.data();
+        int user1 = message::read(p);
+        int user2 = message::read(p);
+        int room_id = message::read(p);
 
         char buf[1024]{};
         auto size = message::write(buf, header::type::room_invite_message, user1, user2, room_id);
@@ -264,8 +268,9 @@ public:
     }
 
     void room_invite_accept(std::span<char> msg, TCP *socket) {
-        int user = message::read(msg);
-        int room_id = message::read(msg.data() + sizeof(int));
+        char *p = msg.data();
+        int user = message::read(p);
+        int room_id = message::read(p);
 
         auto room = room_manager_.search_room(room_id);
 
@@ -290,8 +295,9 @@ public:
 
     void room_invite_reject(std::span<char> msg, TCP *socket) {
         // user1 拒绝了 user2
-        auto user1 = message::read(msg.data());
-        auto user2 = message::read(msg.data() + sizeof(int));
+        char *p = msg.data();
+        auto user1 = message::read(p);
+        auto user2 = message::read(p);
 
         // 给user2 发送消息
         auto user = user_manager_.search_user_by_id(user2);
@@ -308,8 +314,9 @@ public:
 
     // room_leave <user> <room_id>
     void room_leave(std::span<char> msg, TCP *socket) {
-        auto id = message::read(msg.data());
-        auto room_id = message::read(msg.data() + sizeof(int));
+        char *p = msg.data();
+        auto id = message::read(p);
+        auto room_id = message::read(p);
 
         auto room = room_manager_.search_room(room_id);
         if (!room)
@@ -334,8 +341,9 @@ public:
 
     void room_chat(std::span<char> msg, TCP *socket) {
 
-        auto id = message::read(msg.data());
-        auto room_id = message::read(msg.data() + sizeof(int));
+        char *p = msg.data();
+        auto id = message::read(p);
+        auto room_id = message::read(p);
 
         auto room = room_manager_.search_room(room_id);
         if (!room)
@@ -357,7 +365,8 @@ public:
     }
     void match_join(std::span<char> msg, TCP *socket) {
 
-        int room_id = message::read(msg.data());
+        char *p = msg.data();
+        int room_id = message::read(p);
         auto room = room_manager_.search_room(room_id);
 
         // 把房间添加到匹配队列中
@@ -368,9 +377,10 @@ public:
 
     // 收到用户选择英雄后，如果所有用户都选择完成，通知客户端开始加载
     void battle_pick_hero(std::span<char> msg, TCP *socket) {
-        auto battle_id = message::read(msg.data());
-        auto user_id = message::read(msg.data() + sizeof(int));
-        auto hero_name = static_cast<HeroName>(message::read(msg.data() + sizeof(int) * 2));
+        char *p = msg.data();
+        auto battle_id = message::read(p);
+        auto user_id = message::read(p);
+        auto hero_name = static_cast<HeroName>(message::read(p));
         battle_manager_.user_pick_hero(battle_id, user_id, hero_name);
 
         if (!battle_manager_.all_players_picked(battle_id))
@@ -392,9 +402,10 @@ public:
     }
 
     void battle_load(std::span<char> msg, TCP *socket) {
-        int battle_id = message::read(msg.data());
-        int user_id = message::read(msg.data() + sizeof(int));
-        int val = message::read(msg.data() + sizeof(int) * 2);
+        char *p = msg.data();
+        int battle_id = message::read(p);
+        int user_id = message::read(p);
+        int val = message::read(p);
 
         battle_manager_.battle_load(battle_id, user_id, val);
 

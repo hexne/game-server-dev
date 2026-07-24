@@ -121,9 +121,10 @@ export namespace message {
         std::memcpy(buf, &number, sizeof(number));
         return buf + sizeof(number);
     }
-    int read(char *buf) {
+    int read(char *&buf) {
         int number;
         std::memcpy(&number, buf, sizeof(number));
+        buf += sizeof(number);
         return number;
     }
     header::type read_header(std::span<char> buf) {
@@ -132,7 +133,8 @@ export namespace message {
         return v;
     }
     int read(std::span<char> span) {
-        return read(span.data());
+        auto p = span.data();
+        return read(p);
     }
 
     void send_signal(int fd, int value = 1) {

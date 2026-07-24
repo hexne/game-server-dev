@@ -8,12 +8,23 @@ export module battle;
 import std;
 import team;
 import battle_result;
+import hero;
 
 export class Battle {
     Team team_a_, team_b_;
+    int random_seed_{};
+    std::default_random_engine random_engine_;
 public:
-    Battle(Team team_a, Team team_b)
-        : team_a_(std::move(team_a)), team_b_(std::move(team_b)) {
+    Battle(int random_seed, Team team_a, Team team_b)
+        : random_seed_(random_seed), team_a_(std::move(team_a)), team_b_(std::move(team_b)), random_engine_(random_seed_) {  }
+
+    char* serialize(char* buf) {
+        buf = team_a_.serialize(buf);
+        return team_b_.serialize(buf);
+    }
+    char* deserialize(char *buf) {
+        buf = team_a_.deserialize(buf);
+        return team_b_.deserialize(buf);
     }
 
     // 先不实现ban英雄功能
@@ -61,6 +72,8 @@ public:
         else if (team_b_.have_user(user_id))
             team_b_.user_load(user_id, val);
     }
+
+
 
 };
 

@@ -62,24 +62,27 @@ export class Client {
     }
 
     void room_create_true(std::span<char> msg) {
-        auto room_id = message::read(msg.data());
-        auto master_id = message::read(msg.data() + sizeof(int));
+        char *p = msg.data();
+        auto room_id = message::read(p);
+        auto master_id = message::read(p);
         room_ = RoomInfo{.id = room_id, .master = master_id};
     }
 
     // 收到房间邀请信息
     void room_invite_message(std::span<char> msg) {
-        int user1 = message::read(msg.data());
-        int user2 = message::read(msg.data() + sizeof(int));
-        int room_id = message::read(msg.data() + sizeof(int) * 2);
+        char *p = msg.data();
+        int user1 = message::read(p);
+        int user2 = message::read(p);
+        int room_id = message::read(p);
 
+        // user2应该是当前用户
         if (user2 != user_id()) {
             throw std::runtime_error(std::format("{} != {}", user2, user_id()));
         }
 
         // 收到一个邀请信息
         // room_invite_accept(room_id);
-        room_invite_reject(user2, user1);
+        room_invite_reject(user1);
     }
     void room_invite_accept(int room_id) {
         char buf[1024]{};
@@ -101,9 +104,10 @@ export class Client {
 
     // 有用户加入房间
     void room_join(std::span<char> msg) {
-        int user = message::read(msg.data());
-        int room_id = message::read(msg.data() + sizeof(int));
-        int room_master = message::read(msg.data() + sizeof(int) * 2);
+        char *p = msg.data();
+        int user = message::read(p);
+        int room_id = message::read(p);
+        int room_master = message::read(p);
 
         // 进入房间的是当前用户， 更新房间号
         if (user == user_id()) {
@@ -114,7 +118,8 @@ export class Client {
 
     // 有用户离开房间
     void room_leave(std::span<char> msg) {
-        auto id = message::read(msg.data());
+        char *p = msg.data();
+        auto id = message::read(p);
 
         if (id == user_id())
             room_ = std::nullopt;// 换主页ui
@@ -123,8 +128,9 @@ export class Client {
     }
 
     void room_chat(std::span<char> msg) {
-        auto user_id = message::read(msg.data());
-        auto room_id = message::read(msg.data() + sizeof(int));
+        char *p = msg.data();
+        auto user_id = message::read(p);
+        auto room_id = message::read(p);
         auto message = msg.subspan(sizeof(int) * 2);
 
         if (user_id == this->user_id())
@@ -134,7 +140,8 @@ export class Client {
 
     // 收到匹配成功信息
     void match_success(std::span<char> msg) {
-        int id = message::read(msg.data());
+        char *p = msg.data();
+        int id = message::read(p);
         match_accept(id);
     }
     // 接受对局
@@ -157,7 +164,8 @@ export class Client {
 
     void battle_pick_hero(std::span<char> msg) {
         // UI修改，进入英雄选择界面
-        battle_id_ = message::read(msg.data());
+        char *p = msg.data();
+        battle_id_ = message::read(p);
     }
 
     void battle_start_load(std::span<char> msg) {

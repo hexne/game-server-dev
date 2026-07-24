@@ -9,16 +9,18 @@ import battle;
 import id_generator;
 import team;
 import std;
+import hero;
 
 export class BattleManager {
-    std::unordered_map<int, std::shared_ptr<Battle>> battles_;
-    BattleIDGenerator battle_id_generator_;
+    std::unordered_map<int, std::shared_ptr<Battle>> battles_{};
+    BattleIDGenerator battle_id_generator_{};
+    std::default_random_engine random_engine_{};
 public:
-    BattleManager() = default;
+    BattleManager() : random_engine_(std::random_device{}()) {  }
 
     int add_battle(const std::vector<int> &team_a, std::vector<int> team_b) {
         const int id = battle_id_generator_.next();
-        battles_[id] = std::make_shared<Battle>(Team{ team_a }, Team{ team_b });
+        battles_[id] = std::make_shared<Battle>(random_engine_(), Team{ team_a }, Team{ team_b });
         return id;
     }
 
