@@ -289,9 +289,11 @@ public:
     }
 
     void room_invite_reject(std::span<char> msg, TCP *socket) {
+        // user1 拒绝了 user2
         auto user1 = message::read(msg.data());
         auto user2 = message::read(msg.data() + sizeof(int));
 
+        // 给user2 发送消息
         auto user = user_manager_.search_user_by_id(user2);
         if (!user)
             return;

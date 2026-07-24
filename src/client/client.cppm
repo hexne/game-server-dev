@@ -86,10 +86,10 @@ export class Client {
         auto size = message::write(buf, header::type::room_invite_accept, user_id(), room_id);
         tcp_.send_now(std::span{buf, size});
     }
-    // 发送拒绝邀请
-    void room_invite_reject(int user1, int user2) {
+    // 拒绝用户user的房间邀请
+    void room_invite_reject(int user) {
         char buf[1024]{};
-        auto size = message::write(buf, header::type::room_invite_reject, user_id(), user1, user2);
+        auto size = message::write(buf, header::type::room_invite_reject, user_id(), user);
         tcp_.send_now(std::span{buf, size});
     }
 
