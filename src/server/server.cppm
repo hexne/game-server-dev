@@ -100,7 +100,7 @@ export class Server {
         }
         // 所有用户都确认了
         else if (pending_match->confirmed.size() == all_user_count) {
-            // @TODO 开始对局
+            // @TODO 开始对局, 广播用户开始英雄选择
             // battle_manager_.add_battle();
 
         }

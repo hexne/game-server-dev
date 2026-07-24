@@ -7,6 +7,7 @@ module;
 export module team;
 import std;
 import hero;
+import hero_factory;
 
 
 export class Team {
@@ -22,6 +23,9 @@ public:
             confirmed_[user_id] = 0;
         }
     }
+    bool have_user(int user_id) {
+        return users_.contains(user_id);
+    }
 
     // 获取用户选择的英雄
     std::shared_ptr<Hero> get_player_hero(int user_id) {
@@ -29,9 +33,11 @@ public:
             return nullptr;
         return users_[user_id];
     }
-
     void user_pick_hero(int user_id, HeroName hero_name) {
+        if (!users_.contains(user_id))
+            return;
 
+        users_[user_id] = HeroFactory::create_hero(hero_name);
     }
 
 };

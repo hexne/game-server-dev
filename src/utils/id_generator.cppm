@@ -20,10 +20,10 @@ public:
 struct RoomTag  {};
 struct MatchTag {};
 struct PendingMatchTag {};
-struct GameTag  {};
+struct BattleTag  {};
 
 export using RoomIDGenerator = ID<RoomTag>;
 export using MatchIDGenerator = ID<MatchTag>;
 export using PendingMatchIDGenerator = ID<PendingMatchTag>;
-export using GameIDGenerator = ID<GameTag>;
+export using BattleIDGenerator = ID<BattleTag>;
 

@@ -10,15 +10,21 @@ import team;
 import battle_result;
 
 export class Battle {
-    int id_;
     Team team_a_, team_b_;
 public:
-    Battle(const int id, Team team_a, Team team_b)
-        : id_(id), team_a_(std::move(team_a)), team_b_(std::move(team_b)) {
+    Battle(Team team_a, Team team_b)
+        : team_a_(std::move(team_a)), team_b_(std::move(team_b)) {
     }
 
+    // 先不实现ban英雄功能
     void ban() {  }
-    void pick() {  }
+
+    void pick_hero(int user_id, HeroName hero_name) {
+        if (team_a_.have_user(user_id))
+            team_a_.user_pick_hero(user_id, hero_name);
+        else if (team_b_.have_user(user_id))
+            team_b_.user_pick_hero(user_id, hero_name);
+    }
 
     void start_battle() {  }
 
