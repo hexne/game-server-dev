@@ -103,4 +103,9 @@ public:
             hero->update_pos();
         }
     }
+
+    std::size_t serialize_size() const {
+        constexpr int size = sizeof(int) + sizeof(Hero);
+        return size * users_.size();
+    }
 };

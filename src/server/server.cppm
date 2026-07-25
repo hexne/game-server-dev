@@ -143,7 +143,7 @@ export class Server {
 
         room_manager_.pending_match_cancel(pending_match_id);
 
-        // @NOTE, 对局取消只有可能是有用户拒绝了对局，显示某用户拒绝对局即可，甚至无需该用户id
+        // 对局取消只有可能是有用户拒绝了对局，显示某用户拒绝对局即可，甚至无需该用户id
         char buf[512]{};
         const auto size = message::write(buf, header::type::match_cancel);
         for (auto user_id : all_users) {
@@ -159,7 +159,30 @@ export class Server {
     }
 
     void tick() {
-        // @TODO, 遍历所有对局，发送快照
+        //更新所有英雄位置
+        battle_manager_.battle_update_all_hero_pos();
+
+        // 给所有玩家发送快照
+        auto all_battle_id = battle_manager_.all_battle_id();
+        for (auto battle_id : all_battle_id) {
+            auto battle = battle_manager_.get_battle(battle_id);
+            char buf[4096]{};
+            auto pos = message::write(buf, header::type::battle_snapshot);
+
+            auto end = battle->serialize(buf + pos);
+            std::size_t size = (end - buf) / sizeof(char);
+
+            auto all_user_id = battle->all_users();
+            for (auto user_id : all_user_id) {
+                auto user = user_manager_.search_user_by_id(user_id);
+                if (!user)
+                    continue;
+                auto &tcp = user->tcp();
+                if (!tcp)
+                    continue;
+                tcp->send_now(std::span{buf, size});
+            }
+        }
     }
 public:
 

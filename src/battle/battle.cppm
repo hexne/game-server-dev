@@ -77,6 +77,10 @@ public:
         team_a_.update_all_hero_pos();
         team_b_.update_all_hero_pos();
     }
+    std::size_t serialize_size() const {
+        const std::size_t size = team_a_.serialize_size() + team_b_.serialize_size();
+        return std::bit_ceil(size);
+    }
 
 };
 

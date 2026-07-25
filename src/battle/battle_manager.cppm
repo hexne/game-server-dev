@@ -68,4 +68,11 @@ public:
             battle->update_all_hero_pos();
         }
     }
+
+    std::vector<int> all_battle_id() {
+        std::vector<int> ret;
+        for (auto id : battles_ | std::views::keys)
+            ret.push_back(id);
+        return ret;
+    }
 };
