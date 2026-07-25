@@ -171,6 +171,7 @@ export class Server {
 
             auto end = battle->serialize(buf + pos);
             std::size_t size = (end - buf) / sizeof(char);
+            assert(size <= sizeof(buf));
 
             auto all_user_id = battle->all_users();
             for (auto user_id : all_user_id) {
