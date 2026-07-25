@@ -20,6 +20,7 @@ import user_manager;
 import timer;
 import battle_manager;
 import hero;
+import pos;
 
 
 export class Server {
@@ -169,15 +170,22 @@ export class Server {
         int pos_x = message::read(p);
         int pos_y = message::read(p);
 
+        auto battle = battle_manager_.get_battle(battle_id);
+        auto hero = battle->hero(user_id);
+        hero->move(Pos{.x = pos_x, .y = pos_y});
     }
 
     void battle_attack(std::span<char> msg, TCP *socket) {
         char *p = msg.data();
         int battle_id = message::read(p);
-        int user_id = message::read(p);
-        int pos_x = message::read(p);
-        int pos_y = message::read(p);
+        // user1 攻击 user2
+        int user_id1 = message::read(p);
+        int user_id2 = message::read(p);
 
+        auto battle = battle_manager_.get_battle(battle_id);
+        auto hero1 = battle->hero(user_id1);
+        auto hero2 = battle->hero(user_id2);
+        hero1->attack(hero2);
     }
 
     void battle_cast_skill(std::span<char> msg, TCP *socket) {
@@ -564,11 +572,6 @@ public:
 
     }
 };
-
-
-
-
-
 
 export void server_main() {
     Log().push_log("Server start");

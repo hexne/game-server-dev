@@ -108,4 +108,8 @@ public:
         constexpr int size = sizeof(int) + sizeof(Hero);
         return size * users_.size();
     }
+
+    std::shared_ptr<Hero> hero(int user_id) {
+        return users_[user_id];
+    }
 };

@@ -8,6 +8,7 @@ export module hero.base;
 import std;
 import message;
 import pos;
+import battle.map;
 
 
 export enum class HeroName {
@@ -21,6 +22,7 @@ export enum class HeroName {
 
 
 export class Hero {
+protected:
     int hp_{}, hp_max_{};
     int mp_{}, mp_max_{};
     int attack_{};
@@ -33,9 +35,35 @@ export class Hero {
 
     // path_无需序列化, 用于server设置hero当前位置
     std::queue<Pos> path_;
+
+
 public:
 
     Hero() = default;
+
+    // 参数是被攻击者的位置
+    bool can_cast_attack(const Pos &other) {
+        int dx = std::abs(pos_.x - other.x);
+        int dy = std::abs(pos_.y - other.y);
+        return attack_range_ * attack_range_ >= dx * dx + dy * dy;
+    }
+    Pos pos() const {
+        return pos_;
+    }
+
+    // 计算被攻击后受到的伤害是多少
+    int calculate_damage(int damage) {
+        const int real = damage * (100 - defense_) / 100;
+        return real > 0 ? real : 1;
+    }
+
+    // 被攻击后的扣血
+    void take_damage(int damage) {
+        int cur_hp = hp_ - damage;
+        if (cur_hp < 0)
+            cur_hp = 0;
+        hp_ = cur_hp;
+    }
 
     // 一个单位时间之后在哪里
     void update_pos() {
@@ -46,8 +74,10 @@ public:
         }
     }
 
-
-
+    // 只给目的坐标，从当前位置开始移动
+    void move(const Pos &pos) {
+        path_ = BattleMap::a_start(pos_, pos);
+    }
 
     virtual char* serialize(char* buf) {
         char* p = buf;
@@ -79,8 +109,23 @@ public:
 
     // 判断能否在 skill_pos 位置释放技能
     virtual bool check_can_cast_skill(const Pos &skill_pos) = 0;
+
     // 释放技能
     virtual void skill() = 0;
+
+    void attack(std::shared_ptr<Hero> hero) {
+        // 如果不能攻击到
+        if (!can_cast_attack(hero->pos())) {
+            move(pos()); // 也许还得记录对方位置，实现跟踪？
+        }
+        // 能攻击到就直接攻击
+        else {
+            // 当前角色攻击hero
+            // @TODO, 这里攻击没有计算攻速
+            int damage = hero->calculate_damage(attack_);
+            hero->take_damage(damage);
+        }
+    }
 
     virtual ~Hero() = default;
 };

@@ -5,6 +5,7 @@
 export module hero.bjorn;
 import hero.base;
 import pos;
+import std;
 
 // 战士、近战
 export class Bjorn : public Hero {
@@ -20,6 +21,7 @@ public:
         return false;
     }
     void skill() override {  }
+
     virtual ~Bjorn() = default;
 
 };

@@ -26,8 +26,8 @@ struct Node {
 
 export class BattleMap {
     constexpr static int map_size = 1000;
-    MapType data_[map_size * map_size]{};
-    std::mdspan<MapType, std::extents<std::size_t, map_size, map_size>> map_{data_};
+    inline static MapType data_[map_size * map_size]{};
+    inline static std::mdspan<MapType, std::extents<std::size_t, map_size, map_size>> map_{data_};
 
 
     static int distance(const Pos &start, const Pos &goal) {
@@ -36,7 +36,7 @@ export class BattleMap {
 public:
     BattleMap() {  }
 
-    std::queue<Pos> a_start(const Pos &start, const Pos &goal) {
+    static std::queue<Pos> a_start(const Pos &start, const Pos &goal) {
         std::priority_queue<Node> queue_;
         queue_.push(Node{start, 0, distance(start, goal)});
 

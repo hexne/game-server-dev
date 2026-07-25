@@ -82,5 +82,12 @@ public:
         return std::bit_ceil(size);
     }
 
+    std::shared_ptr<Hero> hero(int user_id) {
+        if (team_a_.have_user(user_id))
+            return team_a_.hero(user_id);
+        if (team_b_.have_user(user_id))
+            return team_b_.hero(user_id);
+        return {};
+    }
 };
 

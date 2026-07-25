@@ -351,10 +351,11 @@ public:
     }
 
     // 对战中的攻击指令
-    void battle_attack(Pos pos) {
+    // 对局id, 玩家id, 被攻击的玩家id
+    void battle_attack(int user_id) {
         // 假定只有一种平a 一种攻击方式
         char buf[512]{};
-        auto size = message::write(buf, header::type::battle_attack, battle_id_, user_id(), pos.x, pos.y);
+        auto size = message::write(buf, header::type::battle_attack, battle_id_, this->user_id(), user_id);
         tcp_.send_now(std::span{buf, size});
     }
 
