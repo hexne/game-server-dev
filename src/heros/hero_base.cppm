@@ -116,7 +116,7 @@ public:
     void attack(std::shared_ptr<Hero> hero) {
         // 如果不能攻击到
         if (!can_cast_attack(hero->pos())) {
-            move(pos()); // 也许还得记录对方位置，实现跟踪？
+            move(hero->pos()); // 也许还得记录对方位置，实现跟踪？
         }
         // 能攻击到就直接攻击
         else {

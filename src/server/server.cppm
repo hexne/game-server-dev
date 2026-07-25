@@ -171,7 +171,11 @@ export class Server {
         int pos_y = message::read(p);
 
         auto battle = battle_manager_.get_battle(battle_id);
+        if (!battle)
+            return;
         auto hero = battle->hero(user_id);
+        if (!hero)
+            return;
         hero->move(Pos{.x = pos_x, .y = pos_y});
     }
 
@@ -183,8 +187,12 @@ export class Server {
         int user_id2 = message::read(p);
 
         auto battle = battle_manager_.get_battle(battle_id);
+        if (!battle)
+            return;
         auto hero1 = battle->hero(user_id1);
         auto hero2 = battle->hero(user_id2);
+        if (!hero1 || !hero2)
+            return;
         hero1->attack(hero2);
     }
 
