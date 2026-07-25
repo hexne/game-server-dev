@@ -4,6 +4,7 @@
 ********************************************************************************/
 export module hero.bjorn;
 import hero.base;
+import pos;
 
 // 战士、近战
 export class Bjorn : public Hero {
@@ -15,7 +16,7 @@ public:
     char* deserialize(char* buf) override {
         return Hero::deserialize(buf);
     }
-    bool check_can_cast_skill(const ::Pos& skill_pos) override {
+    bool check_can_cast_skill(const Pos& skill_pos) override {
         return false;
     }
     void skill() override {  }

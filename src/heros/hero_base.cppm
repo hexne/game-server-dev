@@ -7,6 +7,7 @@ module;
 export module hero.base;
 import std;
 import message;
+import pos;
 
 
 export enum class HeroName {
@@ -17,20 +18,7 @@ export enum class HeroName {
 };
 
 
-export struct Pos {
-    int x;
-    int y;
 
-    char* serialize(char *buf) {
-        message::write(buf, x);
-        return message::write(buf + sizeof(int), y);
-    }
-    char * deserialize(char *buf) {
-        x = message::read(buf);
-        y = message::read(buf);
-        return buf;
-    }
-};
 
 export class Hero {
     int hp_{}, hp_max_{};

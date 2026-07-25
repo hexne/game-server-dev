@@ -7,6 +7,7 @@ module;
 export module hero_factory;
 import std;
 import hero;
+import pos;
 
 export namespace HeroFactory {
     std::shared_ptr<Hero> create_hero(HeroName hero_name) {
