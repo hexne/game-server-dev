@@ -18,6 +18,7 @@ import timer;
 import hash256;
 import hero;
 import battle;
+import pos;
 
 struct RoomInfo {
     int id;
@@ -338,6 +339,30 @@ public:
     void battle_pick_hero(HeroName hero_name) {
         char buf[512]{};
         auto size = message::write(buf, header::type::battle_pick_hero, battle_id_, user_id(), static_cast<int>(hero_name));
+        tcp_.send_now(std::span{buf, size});
+    }
+
+    // 发送的消息被服务器接收后按照tick返回快照
+    // 对战中的移动指令
+    void battle_move(Pos pos) {
+        char buf[512]{};
+        auto size = message::write(buf, header::type::battle_move, battle_id_, user_id(), pos.x, pos.y);
+        tcp_.send_now(std::span{buf, size});
+    }
+
+    // 对战中的攻击指令
+    void battle_attack(Pos pos) {
+        // 假定只有一种平a 一种攻击方式
+        char buf[512]{};
+        auto size = message::write(buf, header::type::battle_attack, battle_id_, user_id(), pos.x, pos.y);
+        tcp_.send_now(std::span{buf, size});
+    }
+
+    // 对战中的技能指令
+    void battle_cast_skill(Pos pos) {
+        // 假定只有一个技能
+        char buf[512]{};
+        auto size = message::write(buf, header::type::battle_cast_skill, battle_id_, user_id(), pos.x, pos.y);
         tcp_.send_now(std::span{buf, size});
     }
 };
