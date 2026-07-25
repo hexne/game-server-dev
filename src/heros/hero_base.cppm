@@ -27,13 +27,27 @@ export class Hero {
     int defense_{};
     int attack_speed_{};
     int attack_range_{};
-    int move_speed_{};
+    int move_speed_{};  // 单位时间走过的位置数量
     int skill_need_mp_{};
     Pos pos_{};
 
+    // path_无需序列化, 用于server设置hero当前位置
+    std::queue<Pos> path_;
 public:
 
     Hero() = default;
+
+    // 一个单位时间之后在哪里
+    void next_pos() {
+        int count = move_speed_;
+        while (!path_.empty() && count --) {
+            pos_ = path_.front();
+            path_.pop();
+        }
+    }
+
+
+
 
     virtual char* serialize(char* buf) {
         char* p = buf;

@@ -36,7 +36,7 @@ export class BattleMap {
 public:
     BattleMap() {  }
 
-    std::vector<Pos> a_start(const Pos &start, const Pos &goal) {
+    std::queue<Pos> a_start(const Pos &start, const Pos &goal) {
         std::priority_queue<Node> queue_;
         queue_.push(Node{start, 0, distance(start, goal)});
 
@@ -62,8 +62,12 @@ public:
                 std::vector<Pos> path;
                 for (Pos p = goal; p.x != -1; p = came_from[p.x][p.y])
                     path.push_back(p);
-                std::reverse(path.begin(), path.end());
-                return path;
+                std::ranges::reverse(path);
+                std::queue<Pos> ret;
+                for (auto &pos : path)
+                    ret.push(pos);
+
+                return ret;
             }
 
             // 扩展邻居
