@@ -96,4 +96,11 @@ public:
         }
         return new_pos;
     }
+
+    // 移动所有hero的位置
+    void update_all_hero_pos() {
+        for (auto &[user_id, hero] : users_) {
+            hero->update_pos();
+        }
+    }
 };

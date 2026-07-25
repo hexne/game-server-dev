@@ -38,7 +38,7 @@ public:
     Hero() = default;
 
     // 一个单位时间之后在哪里
-    void next_pos() {
+    void update_pos() {
         int count = move_speed_;
         while (!path_.empty() && count --) {
             pos_ = path_.front();

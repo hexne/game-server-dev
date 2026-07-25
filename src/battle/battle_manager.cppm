@@ -63,4 +63,9 @@ public:
         battle->user_load(user_id, val);
     }
 
+    void battle_update_all_hero_pos() {
+        for (auto& battle : battles_ | std::views::values) {
+            battle->update_all_hero_pos();
+        }
+    }
 };

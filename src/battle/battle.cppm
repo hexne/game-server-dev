@@ -73,7 +73,10 @@ public:
             team_b_.user_load(user_id, val);
     }
 
-
+    void update_all_hero_pos() {
+        team_a_.update_all_hero_pos();
+        team_b_.update_all_hero_pos();
+    }
 
 };
 
