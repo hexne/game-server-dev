@@ -17,6 +17,7 @@ import message;
 import timer;
 import hash256;
 import hero;
+import battle;
 
 struct RoomInfo {
     int id;
@@ -25,6 +26,7 @@ struct RoomInfo {
 
 export class Client {
     std::optional<User> user_;
+    std::shared_ptr<Battle> battle_;
     int battle_id_{};
     std::optional<RoomInfo> room_;
     TCP tcp_;
@@ -42,6 +44,7 @@ export class Client {
         { header::type::battle_pick_hero, &Client::battle_pick_hero },
         { header::type::battle_start_load, &Client::battle_start_load },
         { header::type::battle_start, &Client::battle_start },
+        { header::type::battle_snapshot, &Client::battle_snapshot },
     };
 
     void login_false(std::span<char> msg) {
@@ -176,6 +179,15 @@ export class Client {
         // 开始战斗
         // 显示地图，角色，界面等战斗信息
     }
+
+    void battle_snapshot(std::span<char> msg) {
+        // 直接从数据中提取battle中的信息，然后根据信息绘制游戏界面
+        battle_->deserialize(msg.data());
+        update_ui();
+    }
+    void update_ui() {
+
+    }
 public:
     explicit Client(const Address &address) : tcp_(std::move(address)) {
         auto res = tcp_.connect();
@@ -296,6 +308,9 @@ public:
             auto size = message::write(buf, header::type::battle_load, battle_id_, user_id(), val);
             tcp_.send_now(std::span{buf, size});
         };
+
+        // @TODO, 此前应该发送的消息<user_id, hero_name>
+        // 进而在本地维护一个同样的battle类
 
         // 加载地图...
         send_load_msg(50);
