@@ -37,19 +37,23 @@ export class Server {
 
     // server 的事件分发
     std::map<header::type, void (Server::*)(std::span<char>, TCP *)> events_router {
-        { header::type::login, &Server::login },
-        { header::type::heart, &Server::heart },
-        { header::type::room_create, &Server::room_create },
-        { header::type::room_invite, &Server::room_invite },
+        { header::type::login,              &Server::login              },
+        { header::type::heart,              &Server::heart              },
+        { header::type::room_create,        &Server::room_create        },
+        { header::type::room_invite,        &Server::room_invite        },
         { header::type::room_invite_accept, &Server::room_invite_accept },
         { header::type::room_invite_reject, &Server::room_invite_reject },
-        { header::type::room_leave, &Server::room_leave },
-        { header::type::room_chat, &Server::room_chat },
-        { header::type::match_join, &Server::match_join },
-        { header::type::match_accept, &Server::match_accept },
-        { header::type::match_reject, &Server::match_reject },
-        { header::type::battle_pick_hero, &Server::battle_pick_hero },
-        { header::type::battle_start_load, &Server::battle_load },
+        { header::type::room_leave,         &Server::room_leave         },
+        { header::type::room_chat,          &Server::room_chat          },
+        { header::type::match_join,         &Server::match_join         },
+        { header::type::match_accept,       &Server::match_accept       },
+        { header::type::match_reject,       &Server::match_reject       },
+        { header::type::battle_pick_hero,   &Server::battle_pick_hero   },
+        { header::type::battle_start_load,  &Server::battle_load        },
+        { header::type::battle_move,        &Server::battle_move        },
+        { header::type::battle_attack,      &Server::battle_attack      },
+        { header::type::battle_cast_skill,  &Server::battle_cast_skill  },
+
     };
 
     // 匹配成功, 向id发送匹配成功信息
@@ -156,6 +160,32 @@ export class Server {
                 continue;
             tcp->send_now(std::span{buf, size});
         }
+    }
+
+    void battle_move(std::span<char> msg, TCP *socket) {
+        char *p = msg.data();
+        int battle_id = message::read(p);
+        int user_id = message::read(p);
+        int pos_x = message::read(p);
+        int pos_y = message::read(p);
+
+    }
+
+    void battle_attack(std::span<char> msg, TCP *socket) {
+        char *p = msg.data();
+        int battle_id = message::read(p);
+        int user_id = message::read(p);
+        int pos_x = message::read(p);
+        int pos_y = message::read(p);
+
+    }
+
+    void battle_cast_skill(std::span<char> msg, TCP *socket) {
+        char *p = msg.data();
+        int battle_id = message::read(p);
+        int user_id = message::read(p);
+        int pos_x = message::read(p);
+        int pos_y = message::read(p);
     }
 
     void tick() {
