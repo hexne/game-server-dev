@@ -21,7 +21,7 @@ export enum class HeroName {
 
 
 
-export class Hero {
+export class Hero : public std::enable_shared_from_this<Hero> {
 protected:
     int hp_{}, hp_max_{};
     int mp_{}, mp_max_{};
@@ -58,7 +58,7 @@ public:
     }
 
     // 被攻击后的扣血
-    void take_damage(int damage) {
+    virtual void receive_damage(std::shared_ptr<Hero> hero, int damage) {
         int cur_hp = hp_ - damage;
         if (cur_hp < 0)
             cur_hp = 0;
@@ -123,7 +123,7 @@ public:
             // 当前角色攻击hero
             // @TODO, 这里攻击没有计算攻速
             int damage = hero->calculate_damage(attack_);
-            hero->take_damage(damage);
+            hero->receive_damage(shared_from_this(), damage);
         }
     }
 

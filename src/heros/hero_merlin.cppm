@@ -5,6 +5,7 @@
 export module hero.merlin;
 import hero.base;
 import pos;
+import std;
 
 // 法师、远程
 export class Merlin : public Hero {
@@ -18,6 +19,9 @@ public:
     }
     bool check_can_cast_skill(const Pos& skill_pos) override {
         return false;
+    }
+    void receive_damage(std::shared_ptr<Hero> hero, int damage) override {
+        Hero::receive_damage(hero, damage);
     }
     void skill() override {  }
     virtual ~Merlin() = default;
