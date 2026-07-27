@@ -4,7 +4,7 @@
 ********************************************************************************/
 
 module;
-export module ground_effects_manager;
+export module ground_effects;
 import hero;
 import pos;
 import std;

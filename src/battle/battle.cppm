@@ -12,7 +12,7 @@ import hero;
 import pos;
 import time;
 import message;
-import ground_effects_manager;
+import ground_effects;
 
 export class Battle {
     Team team_a_, team_b_;
