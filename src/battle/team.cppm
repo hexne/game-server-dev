@@ -103,6 +103,11 @@ public:
             hero->update_pos();
         }
     }
+    void update_all_hero_effects() {
+        for (auto &[user_id, hero] : users_) {
+            hero->update_effects();
+        }
+    }
 
     std::size_t serialize_size() const {
         constexpr int size = sizeof(int) + sizeof(Hero);

@@ -18,8 +18,6 @@ export namespace HeroFactory {
             return std::make_shared<Loki>();
         case HeroName::merlin:
             return std::make_shared<Merlin>();
-        case HeroName::thorn:
-            return std::make_shared<Thorn>();
         }
         return nullptr;
     }

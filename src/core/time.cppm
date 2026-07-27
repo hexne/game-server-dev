@@ -456,3 +456,8 @@ struct std::formatter<Time> : FormatterIMPL<Time> {  };
 
 template <>
 struct std::formatter<LocalTime> : FormatterIMPL<LocalTime> {  };
+
+export constexpr int tick_hz = 64;
+export int count_tick(int s) {
+    return s * tick_hz;
+}

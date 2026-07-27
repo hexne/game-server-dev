@@ -360,10 +360,10 @@ public:
     }
 
     // 对战中的技能指令
-    void battle_cast_skill(Pos pos) {
+    void battle_cast_skill(int attacked_user_id, Pos pos) {
         // 假定只有一个技能
         char buf[512]{};
-        auto size = message::write(buf, header::type::battle_cast_skill, battle_id_, user_id(), pos.x, pos.y);
+        auto size = message::write(buf, header::type::battle_cast_skill, battle_id_, user_id(), attacked_user_id, pos.x, pos.y);
         tcp_.send_now(std::span{buf, size});
     }
 };

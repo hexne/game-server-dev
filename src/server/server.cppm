@@ -200,18 +200,30 @@ export class Server {
         char *p = msg.data();
         int battle_id = message::read(p);
         int user_id = message::read(p);
+        int attack_user_id = message::read(p);
         int pos_x = message::read(p);
         int pos_y = message::read(p);
+        auto battle = battle_manager_.get_battle(battle_id);
+        if (!battle)
+            return;
+        auto hero1 = battle->hero(user_id);
+        auto hero2 = battle->hero(attack_user_id);
+        if (!hero1 || !hero2)
+            return;
+        hero1->skill(hero2, Pos{.x = pos_x, .y = pos_y});
     }
 
     void tick() {
-        //更新所有英雄位置
-        battle_manager_.battle_update_all_hero_pos();
 
         // 给所有玩家发送快照
         auto all_battle_id = battle_manager_.all_battle_id();
         for (auto battle_id : all_battle_id) {
             auto battle = battle_manager_.get_battle(battle_id);
+            // 更新战斗状态
+            battle->update_all_hero_pos();
+            battle->update_all_hero_effects();
+            battle->update_all_ground_effects();
+
             char buf[4096]{};
             auto pos = message::write(buf, header::type::battle_snapshot);
 
@@ -249,7 +261,7 @@ public:
 
         timer_.add_repeat_task([this] {
             message::send_signal(tick_fd_);
-        }, std::chrono::milliseconds{1000 / 64});
+        }, std::chrono::milliseconds{1000 / tick_hz});
 
     }
 

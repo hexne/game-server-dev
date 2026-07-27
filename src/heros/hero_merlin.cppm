@@ -6,8 +6,10 @@ export module hero.merlin;
 import hero.base;
 import pos;
 import std;
+import effects_manager;
 
 // 法师、远程
+// 技能开启后，引导时间内， pos位置，范围rang, 不断掉血
 export class Merlin : public Hero {
 public:
     Merlin() = default;
@@ -23,6 +25,9 @@ public:
     void receive_damage(std::shared_ptr<Hero> hero, int damage) override {
         Hero::receive_damage(hero, damage);
     }
-    void skill() override {  }
+    void skill(std::shared_ptr<Hero> hero, const Pos &pos) override {
+        // 加一个施法状态
+        effects_manager_.add_effects(EffectsType::channeling, 5);
+    }
     virtual ~Merlin() = default;
 };

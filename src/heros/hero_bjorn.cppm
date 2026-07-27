@@ -6,8 +6,10 @@ export module hero.bjorn;
 import hero.base;
 import pos;
 import std;
+import effects_manager;
 
 // 战士、近战
+// 技能开启后6s内反伤30%
 export class Bjorn : public Hero {
     bool enable_skill_{};   // 6s内反伤
 public:
@@ -21,6 +23,7 @@ public:
     bool check_can_cast_skill(const Pos& skill_pos) override {
         return false;
     }
+    // 应用伤害
     void receive_damage(std::shared_ptr<Hero> hero, int damage) override {
         Hero::receive_damage(hero, damage);
         if (!enable_skill_)
@@ -34,8 +37,9 @@ public:
         hero->receive_damage(shared_from_this(), val);
     }
 
-    void skill() override {
+    void skill(std::shared_ptr<Hero> hero, const Pos &pos) override {
         enable_skill_ = true;
+        effects_manager_.add_effects(EffectsType::reflect, 6);
     }
 
     virtual ~Bjorn() = default;

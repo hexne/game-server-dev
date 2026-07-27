@@ -9,4 +9,3 @@ export import hero.base;
 export import hero.bjorn;
 export import hero.loki;
 export import hero.merlin;
-export import hero.thorn;

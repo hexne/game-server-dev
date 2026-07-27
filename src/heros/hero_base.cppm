@@ -9,6 +9,7 @@ import std;
 import message;
 import pos;
 import battle.map;
+import effects_manager;
 
 
 export enum class HeroName {
@@ -35,6 +36,7 @@ protected:
 
     // path_无需序列化, 用于server设置hero当前位置
     std::queue<Pos> path_;
+    EffectsManager effects_manager_;
 
 
 public:
@@ -73,6 +75,9 @@ public:
             path_.pop();
         }
     }
+    void update_effects() {
+        effects_manager_.update();
+    }
 
     // 只给目的坐标，从当前位置开始移动
     void move(const Pos &pos) {
@@ -91,7 +96,8 @@ public:
         p = message::write(p, attack_range_);
         p = message::write(p, move_speed_);
         p = message::write(p, skill_need_mp_);
-        return pos_.serialize(p);
+        pos_.serialize(p);
+        return effects_manager_.serialize(p);
     }
     virtual char* deserialize(char *buf) {
         hp_           = message::read(buf);
@@ -104,14 +110,15 @@ public:
         attack_range_ = message::read(buf);
         move_speed_   = message::read(buf);
         skill_need_mp_= message::read(buf);
-        return pos_.deserialize(buf);
+        pos_.deserialize(buf);
+        return effects_manager_.deserialize(buf);
     }
 
     // 判断能否在 skill_pos 位置释放技能
     virtual bool check_can_cast_skill(const Pos &skill_pos) = 0;
 
     // 释放技能
-    virtual void skill() = 0;
+    virtual void skill(std::shared_ptr<Hero>, const Pos &) = 0;
 
     void attack(std::shared_ptr<Hero> hero) {
         // 如果不能攻击到
