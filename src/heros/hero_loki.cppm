@@ -28,5 +28,11 @@ public:
     void skill(std::shared_ptr<Hero> hero, const Pos &pos) override {
         enable_skill_ = true;
     }
+    void attack(std::shared_ptr<Hero> hero) override {
+        // 伤害计算翻倍
+        // ...
+
+        enable_skill_ = false;
+    }
     virtual ~Loki() = default;
 };

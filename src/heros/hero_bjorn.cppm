@@ -11,7 +11,6 @@ import effects_manager;
 // 战士、近战
 // 技能开启后6s内反伤30%
 export class Bjorn : public Hero {
-    bool enable_skill_{};   // 6s内反伤
 public:
     Bjorn() = default;
     char* serialize(char* buf) override {
@@ -26,7 +25,7 @@ public:
     // 应用伤害
     void receive_damage(std::shared_ptr<Hero> hero, int damage) override {
         Hero::receive_damage(hero, damage);
-        if (!enable_skill_)
+        if (!effects_manager_.search_effects(EffectsType::reflect))
             return;
 
         // 反伤 30%
@@ -38,7 +37,6 @@ public:
     }
 
     void skill(std::shared_ptr<Hero> hero, const Pos &pos) override {
-        enable_skill_ = true;
         effects_manager_.add_effects(EffectsType::reflect, 6);
     }
 

@@ -19,12 +19,13 @@ struct EffectsNode {
     int count{};
 
     char *serialize(char *buf) {
-        message::write(buf, static_cast<int>(type));
-        message::write(buf, count);
+        buf = message::write(buf, static_cast<int>(type));
+        return message::write(buf, count);
     }
     char *deserialize(char *buf) {
         type = static_cast<EffectsType>(message::read(buf));
         count = message::read(buf);
+        return buf;
     }
 };
 
@@ -50,17 +51,25 @@ public:
     void add_effects(EffectsType type, int s) {
         effects_.emplace_back(EffectsNode{.type = type, .count = count_tick(s)});
     }
+    bool search_effects(EffectsType type) {
+        const auto it = std::ranges::find_if(effects_, [type](const EffectsNode &node) {
+            return node.type == type;
+        });
+        return it != effects_.end();
+    }
     char *serialize(char *buf) {
         int size = effects_.size();
-        message::write(buf, size);
+        buf = message::write(buf, size);
 
         for (int i = 0;i < size; ++i)
-            effects_[i].serialize(buf);
+            buf = effects_[i].serialize(buf);
+        return buf;
     }
     char *deserialize(char *buf) {
         int size = message::read(buf);
         effects_.resize(size);
         for (int i = 0;i < size; ++i)
             effects_[i].deserialize(buf);
+        return buf;
     }
 };

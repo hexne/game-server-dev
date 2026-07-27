@@ -120,7 +120,7 @@ public:
     // 释放技能
     virtual void skill(std::shared_ptr<Hero>, const Pos &) = 0;
 
-    void attack(std::shared_ptr<Hero> hero) {
+    virtual void attack(std::shared_ptr<Hero> hero) {
         // 如果不能攻击到
         if (!can_cast_attack(hero->pos())) {
             move(hero->pos()); // 也许还得记录对方位置，实现跟踪？

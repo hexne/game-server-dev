@@ -36,7 +36,7 @@ public:
         int size = ground_effects_.size();
         buf = message::write(buf, size);
         for (auto ground_effect: ground_effects_)
-            ground_effect.serialize(buf);
+            buf = ground_effect.serialize(buf);
 
         buf = team_a_.serialize(buf);
         return team_b_.serialize(buf);
@@ -45,7 +45,7 @@ public:
         int size = message::read(buf);
         ground_effects_.resize(size);
         for (int i = 0;i < size; ++i)
-            ground_effects_[i].deserialize(buf);
+            buf = ground_effects_[i].deserialize(buf);
 
         buf = team_a_.deserialize(buf);
         return team_b_.deserialize(buf);
@@ -157,11 +157,6 @@ public:
         std::erase_if(ground_effects_, [](const GroundEffects &ground_effect) {
             return ground_effect.count <= 0;
         });
-    }
-
-    std::size_t serialize_size() const {
-        const std::size_t size = team_a_.serialize_size() + team_b_.serialize_size();
-        return std::bit_ceil(size);
     }
 
     std::shared_ptr<Hero> hero(int user_id) {
