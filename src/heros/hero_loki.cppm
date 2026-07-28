@@ -6,6 +6,7 @@ export module hero.loki;
 import hero.base;
 import pos;
 import std;
+import message;
 
 // 刺客、能量
 // 技能开启后下次攻击双倍伤害
@@ -14,9 +15,11 @@ export class Loki : public Hero {
 public:
     Loki() = default;
     char* serialize(char* buf) override {
+        buf = message::write(buf, enable_skill_);
         return Hero::serialize(buf);
     }
     char* deserialize(char* buf) override {
+        enable_skill_ = message::read(buf);
         return Hero::deserialize(buf);
     }
     bool check_can_cast_skill(const Pos& skill_pos) override {

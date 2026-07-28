@@ -7,6 +7,7 @@ import hero.base;
 import pos;
 import std;
 import effects_manager;
+import message;
 
 // 法师、远程
 // 技能开启后，引导时间内， pos位置，范围rang, 不断掉血
@@ -15,9 +16,11 @@ export class Merlin : public Hero {
 public:
     Merlin() = default;
     char* serialize(char* buf) override {
+        buf = message::write(buf, skill_need_distance_);
         return Hero::serialize(buf);
     }
     char* deserialize(char* buf) override {
+        skill_need_distance_ = message::read(buf);
         return Hero::deserialize(buf);
     }
     bool check_can_cast_skill(const Pos& skill_pos) override {
