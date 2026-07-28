@@ -20,18 +20,21 @@ public:
         return Hero::deserialize(buf);
     }
     bool check_can_cast_skill(const Pos& skill_pos) override {
-        return false;
+        return Hero::check_can_cast_skill(skill_pos);
     }
     void receive_damage(std::shared_ptr<Hero> hero, int damage) override {
         Hero::receive_damage(hero, damage);
     }
     void skill(std::shared_ptr<Hero> hero, const Pos &pos) override {
-        enable_skill_ = true;
+        if (check_can_cast_skill(pos)) {
+            enable_skill_ = true;
+            mp_ -= skill_need_mp_;
+        }
     }
     void attack(std::shared_ptr<Hero> hero) override {
-        // 伤害计算翻倍
-        // ...
-
+        attack_ *= 2;
+        Hero::attack(hero);
+        attack_ /= 2;
         enable_skill_ = false;
     }
     virtual ~Loki() = default;

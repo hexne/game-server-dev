@@ -492,7 +492,7 @@ public:
         battle_manager_.battle_load(battle_id, user_id, val);
 
         if (!battle_manager_.all_players_picked(battle_id))
-            ;   // 没有全部加载完就不管
+            return;   // 没有全部加载完就不管
 
 
         // 全部加载完广播所有用户开始战斗

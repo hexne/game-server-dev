@@ -25,7 +25,7 @@ export class Battle {
         auto hero_pos = hero->pos();
         int dx = std::abs(hero_pos.x - pos.x);
         int dy = std::abs(hero_pos.y - pos.y);
-        return dx * dx + dy * dy <= r;
+        return dx * dx + dy * dy <= r * r;
     }
 
 public:
@@ -113,11 +113,15 @@ public:
             auto pos = ground_effect.pos;
             auto r = ground_effect.radius;
             auto hero = this->hero(user_id);
+            if (!hero)
+                continue;
 
             // 当前技能是team_a放的
             if (team_a_.have_user(user_id)) {
                 for (auto team_b_user : team_b_.all_users()) {
                     auto team_b_hero = this->hero(team_b_user);
+                    if (!team_b_hero)
+                        continue;
                     if (in_range(pos, r, team_b_hero)) {
                         hero->attack(team_b_hero);
                     }
@@ -125,8 +129,10 @@ public:
             }
             // 当前技能是team_b放的
             else if (team_b_.have_user(user_id)) {
-                for (auto team_a_user : team_b_.all_users()) {
+                for (auto team_a_user : team_a_.all_users()) {
                     auto team_a_hero = this->hero(team_a_user);
+                    if (!team_a_hero)
+                        continue;
                     if (in_range(pos, r, team_a_hero)) {
                         hero->attack(team_a_hero);
                     }

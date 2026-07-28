@@ -115,7 +115,9 @@ public:
     }
 
     // 判断能否在 skill_pos 位置释放技能
-    virtual bool check_can_cast_skill(const Pos &skill_pos) = 0;
+    virtual bool check_can_cast_skill(const Pos &skill_pos) {
+        return mp_ >= skill_need_mp_;
+    }
 
     // 释放技能
     virtual void skill(std::shared_ptr<Hero>, const Pos &) = 0;

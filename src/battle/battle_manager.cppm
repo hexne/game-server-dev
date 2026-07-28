@@ -53,6 +53,8 @@ public:
 
     std::vector<int> all_users(int battle_id) {
         auto battle = get_battle(battle_id);
+        if (!battle)
+            return {};
         return battle->all_users();
     }
 
