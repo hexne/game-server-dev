@@ -78,6 +78,23 @@ public:
         confirmed_[user_id] = val;
     }
 
+    // team.cppm
+    char* serialize_filtered(char *buf, const std::unordered_set<int>& visible_ids) {
+        int visible_count = 0;
+        for (auto &[user_id, hero] : users_)
+            if (hero && visible_ids.contains(user_id))
+                visible_count++;
+
+        buf = message::write(buf, visible_count); // 先写可见数量，客户端按这个数量循环读取
+        for (auto &[user_id, hero] : users_) {
+            if (!hero || !visible_ids.contains(user_id))
+                continue;
+            buf = message::write(buf, user_id);
+            buf = hero->serialize(buf);
+        }
+        return buf;
+    }
+
     char* serialize(char *buf) {
         char *new_pos = buf;
         for (auto &[user_id, hero] : users_) {

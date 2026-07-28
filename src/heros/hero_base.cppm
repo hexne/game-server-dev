@@ -40,6 +40,7 @@ protected:
 
 
 public:
+    inline static std::size_t vision_range = 100;
 
     Hero() = default;
 

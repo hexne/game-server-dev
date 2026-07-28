@@ -214,32 +214,33 @@ export class Server {
     }
 
     void tick() {
-
-        // 给所有玩家发送快照
         auto all_battle_id = battle_manager_.all_battle_id();
         for (auto battle_id : all_battle_id) {
             auto battle = battle_manager_.get_battle(battle_id);
-            // 更新战斗状态
             battle->update_all_hero_pos();
             battle->update_all_hero_effects();
             battle->update_all_ground_effects();
 
-            char buf[4096]{};
-            auto pos = message::write(buf, header::type::battle_snapshot);
+            char buf_a[4096]{}, buf_b[4096]{};
 
-            auto end = battle->serialize(buf + pos);
-            std::size_t size = (end - buf) / sizeof(char);
-            assert(size <= sizeof(buf));
+            auto pos_a = message::write(buf_a, header::type::battle_snapshot);
+            auto end_a = battle->serialize_for_team(true, buf_a + pos_a);
+            std::size_t size_a = (end_a - buf_a) / sizeof(char);
 
-            auto all_user_id = battle->all_users();
-            for (auto user_id : all_user_id) {
+            auto pos_b = message::write(buf_b, header::type::battle_snapshot);
+            auto end_b = battle->serialize_for_team(false, buf_b + pos_b);
+            std::size_t size_b = (end_b - buf_b) / sizeof(char);
+
+            // team_a 的人发 buf_a，team_b 的人发 buf_b
+            for (auto user_id : battle->team_a_users()) {  // Battle 需要暴露这个接口
                 auto user = user_manager_.search_user_by_id(user_id);
-                if (!user)
-                    continue;
-                auto &tcp = user->tcp();
-                if (!tcp)
-                    continue;
-                tcp->send_now(std::span{buf, size});
+                if (!user || !user->tcp()) continue;
+                user->tcp()->send_now(std::span{buf_a, size_a});
+            }
+            for (auto user_id : battle->team_b_users()) {
+                auto user = user_manager_.search_user_by_id(user_id);
+                if (!user || !user->tcp()) continue;
+                user->tcp()->send_now(std::span{buf_b, size_b});
             }
         }
     }

@@ -32,6 +32,35 @@ public:
     Battle(int random_seed, Team team_a, Team team_b)
         : random_seed_(random_seed), team_a_(std::move(team_a)), team_b_(std::move(team_b)), random_engine_(random_seed_) {  }
 
+    // battle.cppm
+    char* serialize_for_team(bool viewer_is_team_a, char* buf) {
+        auto visible = visible_users(viewer_is_team_a);
+
+        // 地面效果（技能范围伤害区域）也要按视野过滤，
+        // 否则敌方放的技能范围会暴露对方的走位意图
+        std::vector<GroundEffects> visible_effects;
+        for (auto &e : ground_effects_) {
+            bool is_ally_effect = viewer_is_team_a
+                ? team_a_.have_user(e.user_id)
+                : team_b_.have_user(e.user_id);
+            if (is_ally_effect || visible.contains(e.user_id))
+                visible_effects.push_back(e);
+        }
+        int size = visible_effects.size();
+        buf = message::write(buf, size);
+        for (auto &e : visible_effects)
+            buf = e.serialize(buf);
+
+        // 己方队伍：全量序列化，不做任何隐藏
+        // 敌方队伍：只序列化可见的英雄，其余跳过
+        auto &own_team = viewer_is_team_a ? team_a_ : team_b_;
+        auto &enemy_team = viewer_is_team_a ? team_b_ : team_a_;
+
+        buf = own_team.serialize(buf);
+        buf = enemy_team.serialize_filtered(buf, visible); // 见下方
+        return buf;
+    }
+
     char* serialize(char* buf) {
         int size = ground_effects_.size();
         buf = message::write(buf, size);
@@ -88,6 +117,12 @@ public:
         auto ret = team_a_.all_users();
         ret.append_range(team_b_.all_users());
         return ret;
+    }
+    std::vector<int> team_a_users() {
+        return team_a_.all_users();
+    }
+    std::vector<int> team_b_users() {
+        return team_b_.all_users();
     }
 
     void user_load(int user_id, int val) {
@@ -171,6 +206,30 @@ public:
         if (team_b_.have_user(user_id))
             return team_b_.hero(user_id);
         return {};
+    }
+
+    std::unordered_set<int> visible_users(bool viewer_is_team_a) {
+        auto &viwers = viewer_is_team_a ? team_a_ : team_b_;
+        auto &enemies = viewer_is_team_a ? team_b_ : team_a_;
+
+        std::unordered_set<int> visible;
+        for (auto viewer_id : viwers.all_users()) {
+            auto viewer_hero = this->hero(viewer_id);
+            if (!viewer_hero)
+                continue;
+
+            for (auto enemy_id : enemies.all_users()) {
+                auto enemy_hero = enemies.hero(enemy_id);
+                if (!enemy_hero)
+                    continue;
+                if (visible.contains(enemy_id))
+                    continue;
+
+                if (in_range(viewer_hero->pos(), Hero::vision_range, enemy_hero))
+                    visible.insert(enemy_id);
+            }
+        }
+        return visible;
     }
 };
 
