@@ -1,6 +1,6 @@
 add 3
 login
 room_create 0
-room_invite 0 1 accept
-room_invite 0 2 accept
+room_invite.accept 0 1
+room_invite.accept 0 2
 chat 0 hello room

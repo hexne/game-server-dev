@@ -79,13 +79,47 @@ TestResult login(const Args &args) {
 
 
 // room index ..., 每个被指定的index创建一个房间
-TestResult room(const Args& args) {
+TestResult room_create(const Args& args) {
+    std::vector<int> indexs{};
+    if (args.args_type == Args::ArgsType::none) {
+        indexs = client_manager.all_index();
+    }
+    else if (args.args_type == Args::ArgsType::range) {
+        auto all_index = client_manager.all_index();
+        auto [begin, end] = args.range;
+        for (auto index : all_index) {
+            if (index >= begin && index <= end)
+                indexs.push_back(index);
+        }
+    }
+    else {
+        for (auto index : args.indexs)
+            indexs.push_back(index);
+    }
+    client_manager.room_create(indexs);
+
+    // 开始检查client的消息
+    for (auto index : indexs) {
+        auto &client = client_manager.client(index);
+        auto res = wait(client);
+        if (res.contains(header::type::login_true))
+            continue;
+        return TestResult{std::string("room create false")};
+    }
+    return TestResult{true};
+}
+
+
+// room_invite index1 index2, index1 邀请index2加入房间
+TestResult room_invite(bool is_accept, const Args& args) {
 
 }
 
-// room_invite index1 index2, index1 邀请index2加入房间
-TestResult room_invite(const Args& args) {
-
+TestResult room_invite_accept(const Args& args) {
+    return room_invite(true, args);
+}
+TestResult room_invite_reject(const Args& args) {
+    return room_invite(false, args);
 }
 
 int main(int argc, char* argv[]) {
@@ -99,7 +133,10 @@ int main(int argc, char* argv[]) {
 
     std::map<std::string, std::function<TestResult (const Args&)>> rounter {
         { "add", add },
-        { "login", login }
+        { "login", login },
+        { "room_create", room_create },
+        { "room_invite.accept", room_invite_accept },
+        { "room_invite.reject", room_invite_reject },
     };
 
     // in 已经完成统一

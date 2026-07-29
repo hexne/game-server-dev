@@ -1,4 +1,4 @@
 add 2
 login 0 1
 room_create 0
-room_invite 0 1 accept
+room_invite.accept 0 1
