@@ -1,0 +1,6 @@
+add 3
+login
+room_create 0
+room_invite 0 1 accept
+room_invite 0 2 accept
+chat 0 hello room
