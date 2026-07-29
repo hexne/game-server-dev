@@ -11,10 +11,11 @@ import message;
 ClientManager client_manager;
 
 auto wait(std::unique_ptr<Client> &client) {
-    std::unique_lock lock(test_mutex);
-    test_cv.wait(lock, [] { return test_ready; });
+    auto &cv = client->test_cv;
+    std::unique_lock lock(client->test_mutex);
+    cv.wait(lock, [&client] { return client->test_ready; });
     auto info = client->test_info();
-    test_ready = false;
+    client->test_ready = false;
     return info;
 }
 

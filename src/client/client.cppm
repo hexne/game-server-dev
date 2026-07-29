@@ -19,11 +19,7 @@ import hash256;
 import hero;
 import battle;
 import pos;
-#ifdef DEBUG
-export std::condition_variable test_cv;
-export bool test_ready{};
-export std::mutex test_mutex;
-#endif
+
 
 struct RoomInfo {
     int id;
@@ -383,6 +379,9 @@ public:
     }
 
 #ifdef DEBUG
+    std::condition_variable test_cv;
+    bool test_ready{};
+    std::mutex test_mutex;
     auto test_info() {
         return test_msg;
     }
