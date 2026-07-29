@@ -106,7 +106,7 @@ int main(int argc, char* argv[]) {
         auto result = rounter[args.cmd](args);
         static int line{1};
 
-        std::println("{} : {}", line++, result.string());
+        std::println("{} : {} {}", line++, result.string(), args.cmd);
         std::flush(std::cout);
         if (!result.is_pass) {
             return 0;

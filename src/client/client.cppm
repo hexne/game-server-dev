@@ -62,7 +62,6 @@ export class Client {
 
     // id:name:number
     void login_true(std::span<char> msg) {
-        std::println("login true");
         std::string user_info(msg.begin(), msg.end());
         user_ = User(user_info);
 
