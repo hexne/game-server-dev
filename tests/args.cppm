@@ -28,6 +28,7 @@ export struct Args {
         iss >> out.cmd;
 
         std::string arg;
+        iss >> arg;
         // 空的
         if (arg.empty()) {
             out.args_type = ArgsType::none;
@@ -45,6 +46,7 @@ export struct Args {
         }
         else {
             out.args_type = ArgsType::indexs;
+            out.indexs.push_back(std::stoi(arg));
             int index{};
             while (iss >> index) {
                 out.indexs.push_back(index);
