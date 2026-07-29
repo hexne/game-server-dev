@@ -19,6 +19,11 @@ import hash256;
 import hero;
 import battle;
 import pos;
+#ifdef DEBUG
+export std::condition_variable test_cv;
+export bool test_ready{};
+export std::mutex test_mutex;
+#endif
 
 struct RoomInfo {
     int id;
@@ -26,6 +31,9 @@ struct RoomInfo {
 };
 
 export class Client {
+#ifdef DEBUG
+    std::map<header::type, std::string> test_msg;
+#endif
     std::optional<User> user_;
     std::shared_ptr<Battle> battle_;
     int battle_id_{};
@@ -327,6 +335,15 @@ public:
         if (!rounter_.contains(header))
             return;
 
+    #ifdef DEBUG
+        {
+            std::lock_guard lock(test_mutex);
+            test_msg[header] = std::string(msg.begin(), msg.end());
+            test_ready = true;
+        }
+        test_cv.notify_one();
+    #endif
+
         (this->*rounter_[header])(context);
     }
 
@@ -366,6 +383,12 @@ public:
         auto size = message::write(buf, header::type::battle_cast_skill, battle_id_, user_id(), attacked_user_id, pos.x, pos.y);
         tcp_.send_now(std::span{buf, size});
     }
+
+#ifdef DEBUG
+    auto test_info() {
+        return test_msg;
+    }
+#endif
 };
 
 

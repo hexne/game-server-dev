@@ -11,6 +11,14 @@ export struct Args {
     std::string cmd;
     std::vector<std::string> args;
 
+    std::vector<int> args_to_int() const {
+        std::vector<int> ret;
+        for (auto &s : args) {
+            ret.push_back(std::stoi(s));
+        }
+        return ret;
+    }
+
     friend std::istream& operator>>(std::istream& is, Args& out) {
         out.cmd.clear();
         out.args.clear();

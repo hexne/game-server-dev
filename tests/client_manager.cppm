@@ -25,6 +25,17 @@ export class ClientManager {
         return users_[index]->user_id();
     }
 public:
+    std::unique_ptr<Client>& client(const int index) {
+        return users_.at(index);
+    }
+
+    std::vector<int> all_index() const {
+        std::vector<int> ret;
+        for (auto &[index, client] : users_) {
+            ret.push_back(index);
+        }
+        return ret;
+    }
 
     ClientManager() {
         thread_ = std::thread(&ClientManager::epoll_loop, this);
@@ -84,7 +95,6 @@ public:
             int fd = client->fd();
             epoll_.add(fd, epoll_in | epoll_out | epoll_et, client.get());
             users_.emplace(index ++, std::move(client));
-            std::println(std::cout, "add client fd={}", fd);
         }
     }
 

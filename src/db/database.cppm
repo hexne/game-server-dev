@@ -235,7 +235,7 @@ export std::string search_user_profile(Database &db, std::string number) {
     if (res.empty())
         return {};
 
-    return std::format("{}|{}|{}|{}|{}|{}|{}",
+    return std::format("{}|{}|{}|{}|{}|{}|{}|{}",
         res[0], res[1], res[2], res[3], res[4], res[5], res[6], res[7]);
 }
 

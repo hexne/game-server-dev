@@ -10,13 +10,16 @@ project(game-server-dev)
 
 set(CMAKE_CXX_STANDARD 26)
 add_subdirectory(src)
+add_subdirectory(tests)
 
 add_executable(game-server-dev src/main.cpp)
 target_link_libraries(game-server-dev PRIVATE
         module
+        test_module
 )
+target_link_libraries(test_module PRIVATE module)
 
-add_executable(manager tests/client_manager.cpp)
+add_executable(manager tests/tests.cpp)
 target_link_libraries(manager PRIVATE
-        module
+        test_module
 )

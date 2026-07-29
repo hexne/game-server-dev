@@ -76,7 +76,7 @@ public:
     }
 
     std::string to_string() const {
-        return std::format("{}|{}|{}|{}|{}|{}|{}",
+        return std::format("{}|{}|{}|{}|{}|{}|{}|{}",
             id_, name(), number(), password_hash(), create_time().get_string(), level(), exp(), rank());
     }
 
