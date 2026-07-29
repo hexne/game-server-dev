@@ -9,19 +9,15 @@ import std;
 
 export struct Args {
     std::string cmd;
-    std::vector<std::string> args;
+    enum class ArgsType {
+        none, indexs, range
+    } args_type;
 
-    std::vector<int> args_to_int() const {
-        std::vector<int> ret;
-        for (auto &s : args) {
-            ret.push_back(std::stoi(s));
-        }
-        return ret;
-    }
+    std::vector<int> indexs{};
+    std::tuple<int, int> range{};
 
     friend std::istream& operator>>(std::istream& is, Args& out) {
         out.cmd.clear();
-        out.args.clear();
 
         std::string line;
         if (!std::getline(is, line)) {
@@ -32,8 +28,27 @@ export struct Args {
         iss >> out.cmd;
 
         std::string arg;
-        while (iss >> arg) {
-            out.args.push_back(arg);
+        // 空的
+        if (arg.empty()) {
+            out.args_type = ArgsType::none;
+        }
+        // range
+        else if (arg.find('-') != std::string::npos) {
+            out.args_type = ArgsType::range;
+
+            auto it = arg.begin();
+            auto pos = arg.find('-');
+
+            int begin = std::stoi(std::string(it, it + pos));
+            int end = std::stoi(std::string(it + pos + 1, arg.end()));
+            out.range = std::make_tuple(begin, end);
+        }
+        else {
+            out.args_type = ArgsType::indexs;
+            int index{};
+            while (iss >> index) {
+                out.indexs.push_back(index);
+            }
         }
 
         return is;

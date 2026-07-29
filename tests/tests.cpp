@@ -34,10 +34,8 @@ struct TestResult {
     }
 };
 
-
-
 TestResult add(const Args& args) {
-    client_manager.add(args.args_to_int().front());
+    client_manager.add(args.indexs.front());
     return TestResult{true};
 }
 
@@ -48,24 +46,19 @@ TestResult add(const Args& args) {
 // index 的范围和内容是可推测的
 TestResult login(const Args &args) {
     std::vector<int> indexs{};
-    if (args.args.empty()) {
+    if (args.args_type == Args::ArgsType::none) {
         indexs = client_manager.all_index();
     }
-    else if (auto pos = args.args.front().find("-"); pos != std::string::npos) {
-        auto string = args.args.front();
+    else if (args.args_type == Args::ArgsType::range) {
+        auto [begin, end] = args.range;
         auto all_index = client_manager.all_index();
-        std::ranges::sort(all_index);
-        auto it = string.begin();
-        int begin = std::stoi(std::string(it, it+pos));
-        int end = std::stoi(std::string(it + pos + 1, string.end()));
-
         for (auto index : all_index) {
             if (index >= begin && index <= end)
                 indexs.push_back(index);
         }
     }
     else {
-        for (auto index : args.args_to_int())
+        for (auto index : args.indexs)
             indexs.push_back(index);
     }
 
@@ -82,6 +75,17 @@ TestResult login(const Args &args) {
         return TestResult{std::string("login false")};
     }
     return TestResult{true};
+}
+
+
+// room index ..., 每个被指定的index创建一个房间
+TestResult room(const Args& args) {
+
+}
+
+// room_invite index1 index2, index1 邀请index2加入房间
+TestResult room_invite(const Args& args) {
+
 }
 
 int main(int argc, char* argv[]) {
