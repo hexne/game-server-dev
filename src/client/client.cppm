@@ -199,7 +199,6 @@ export class Client {
 public:
     explicit Client(const Address &address) : tcp_(std::move(address)) {
         auto res = tcp_.connect();
-        Log().push_log(std::format("connect res : {}", res));
         if (res == -1 && errno != EINPROGRESS) {
             Log().push_log(std::format("connect error : {}", strerror(errno)));
         }
