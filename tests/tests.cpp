@@ -190,6 +190,80 @@ TestResult room_chat(const Args& args) {
 }
 
 
+TestResult match(int type, const Args& args) {
+    // 0 -> 确认对局
+    // 1 -> 拒绝对局
+    // 2 -> 超时
+    std::vector<int> indexs{};
+    if (args.args_type == Args::ArgsType::none) {
+        indexs = client_manager.all_index();
+    }
+    else if (args.args_type == Args::ArgsType::range) {
+        auto all_index = client_manager.all_index();
+        auto [begin, end] = args.range;
+        for (auto index : all_index) {
+            if (index >= begin && index <= end)
+                indexs.push_back(index);
+        }
+    }
+    else {
+        for (auto index : args.indexs)
+            indexs.push_back(index);
+    }
+
+    for (auto index : indexs) {
+        auto &client = client_manager.client(index);
+        client->match_join();
+    }
+
+    // 所有指定的用户都已经开始匹配
+    for (auto &index : indexs) {
+        auto &client = client_manager.client(index);
+        auto res = wait(client, header::type::match_success);
+        if (!res.contains(header::type::match_success)) {
+            return TestResult{std::string("error header info")};
+        }
+    }
+
+    // 全部都收到了匹配成功的通知
+    // 如果是拒绝，就挑一个用户拒绝然后检查所有是否为match_cancel
+    // 如果是接受，就全部接受然后检查是否开始
+    // 如果是超时，就先挑一个不发消息，sleep,后面检查是否为 match_cancel
+
+    // 接受
+    if (type == 0) {
+        for (auto index : indexs) {
+            auto &client = client_manager.client(index);
+            auto res = wait(client, header::type::battle_pick_hero);
+            if (!res.contains(header::type::battle_pick_hero))
+                return TestResult {std::string("error header info")};
+        }
+        return TestResult{true};
+    }
+    // 拒绝
+    if (type == 1) {
+
+    }
+    // 超时
+    if (type == 2) {
+
+    }
+
+
+
+
+}
+TestResult match_accept(const Args& args) {
+    return match(0, args);
+}
+TestResult match_reject(const Args& args) {
+    return match(1, args);
+}
+TestResult match_timeout(const Args &args) {
+    return match(2, args);
+}
+
+
 int main(int argc, char* argv[]) {
     std::istream *in = &std::cin;
     std::ifstream in_file;
@@ -206,6 +280,9 @@ int main(int argc, char* argv[]) {
         { "room_invite.accept", room_invite_accept },
         { "room_invite.reject", room_invite_reject },
         { "room_chat", room_chat },
+        { "match.accept", match_accept },
+        { "match.reject", match_reject },
+        { "match_timeout", match_timeout },
     };
 
     // in 已经完成统一

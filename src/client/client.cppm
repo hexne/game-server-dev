@@ -135,7 +135,6 @@ export class Client {
     void match_success(std::span<char> msg) {
         char *p = msg.data();
         int id = message::read(p);
-        match_accept(id);
     }
     // 接受对局
     void match_accept(int id) {
