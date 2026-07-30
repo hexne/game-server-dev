@@ -222,6 +222,13 @@ public:
         tcp_.send_now(std::span{buf, size});
         have_room_invite_id_ = 0;
     }
+
+    void room_chat(const std::string &msg) {
+        char buf[512]{};
+        auto size = message::write(buf, header::type::room_chat, this->user_id(), room_->id);
+        tcp_.send_now(std::span{buf, size});
+    }
+
     void send_heart(int id) {
         char buf[16]{};
         auto id_span = std::span{reinterpret_cast<char*>(&id), sizeof(id)};

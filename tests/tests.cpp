@@ -152,6 +152,44 @@ TestResult room_invite_reject(const Args& args) {
     return room_invite(false, args);
 }
 
+
+TestResult room_chat(const Args& args) {
+    if (args.args_type == Args::ArgsType::none) {
+        return TestResult{std::string("error command format")};
+    }
+    if (args.args_type == Args::ArgsType::range) {
+        return TestResult{std::string("error command format")};
+    }
+
+    static constexpr std::string msg = "hello room";
+    auto user1 = args.indexs.front();
+    auto &send_msg_client = client_manager.client(user1);
+    send_msg_client->room_chat(msg);
+
+    auto get_all_user_index = [&args] {
+        std::vector<int> ret{};
+        for (int i = 1; i < args.indexs.size(); ++i)
+            ret.push_back(args.indexs[i]);
+        return ret;
+    };
+    auto all_user_index = get_all_user_index();
+
+    for (auto index : all_user_index) {
+        auto &client = client_manager.client(index);
+        auto res = wait(client);
+        if (!res.contains(header::type::room_chat)) {
+            return TestResult{std::string("haven't get chat msg")};
+        }
+
+        auto get_msg = res[header::type::room_chat];
+        if (get_msg != msg) {
+            return TestResult{std::string("get error chat msg")};
+        }
+    }
+    return TestResult{true};
+}
+
+
 int main(int argc, char* argv[]) {
     std::istream *in = &std::cin;
     std::ifstream in_file;
@@ -167,6 +205,7 @@ int main(int argc, char* argv[]) {
         { "room_create", room_create },
         { "room_invite.accept", room_invite_accept },
         { "room_invite.reject", room_invite_reject },
+        { "room_chat", room_chat },
     };
 
     // in 已经完成统一
