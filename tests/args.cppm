@@ -18,6 +18,8 @@ export struct Args {
 
     friend std::istream& operator>>(std::istream& is, Args& out) {
         out.cmd.clear();
+        out.indexs.clear();
+        out.range = std::make_tuple(-1, -1);
 
         std::string line;
         if (!std::getline(is, line)) {

@@ -103,7 +103,7 @@ TestResult room_create(const Args& args) {
     for (auto index : indexs) {
         auto &client = client_manager.client(index);
         auto res = wait(client);
-        if (res.contains(header::type::login_true))
+        if (res.contains(header::type::room_create_true))
             continue;
         return TestResult{std::string("room create false")};
     }
