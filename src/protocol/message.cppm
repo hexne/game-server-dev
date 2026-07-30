@@ -130,7 +130,7 @@ export namespace message {
         return read(p);
     }
 
-    void send_signal(int fd, int value = 1) {
+    void send_signal(int fd, size_t value = 1) {
         ::write(fd, &value, sizeof(value));
     }
 
