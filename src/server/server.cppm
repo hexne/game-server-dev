@@ -435,7 +435,7 @@ public:
         auto users = room->users();
         for (auto user_id : users) {
             char buf[512]{};
-            auto size = message::write(buf, header::type::room_chat, msg);
+            auto size = message::write(buf, header::type::room_chat, std::span{std::span<char>::iterator(p), msg.end()});
 
             auto user = user_manager_.search_user_by_id(user_id);
             if (!user)

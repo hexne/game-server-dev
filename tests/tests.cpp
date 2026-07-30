@@ -10,12 +10,12 @@ import message;
 
 ClientManager client_manager;
 
-auto wait(std::unique_ptr<Client> &client) {
+auto wait(std::unique_ptr<Client> &client, header::type type, header::type type2 = header::type::error) {
     auto &cv = client->test_cv;
     std::unique_lock lock(client->test_mutex);
-    cv.wait(lock, [&client] { return client->test_ready; });
+    cv.wait(lock, [&client, type, type2] { return client->has_msg(type, type2); });
     auto info = client->test_info();
-    client->test_ready = false;
+    client->consume_msg(type, type2);
     return info;
 }
 
@@ -69,7 +69,7 @@ TestResult login(const Args &args) {
     // 拿到了所有的index, 检查获取的内容
     for (auto index : indexs) {
         auto &client = client_manager.client(index);
-        auto res = wait(client);
+        auto res = wait(client, header::type::login_true);
         if (res.contains(header::type::login_true))
             continue;
 
@@ -102,7 +102,7 @@ TestResult room_create(const Args& args) {
     // 开始检查client的消息
     for (auto index : indexs) {
         auto &client = client_manager.client(index);
-        auto res = wait(client);
+        auto res = wait(client, header::type::room_create_true);
         if (res.contains(header::type::room_create_true))
             continue;
         return TestResult{std::string("room create false")};
@@ -126,7 +126,7 @@ TestResult room_invite(bool is_accept, const Args& args) {
     client_manager.room_invite(user1, user2);
     auto &client1 = client_manager.client(user1);
     auto &client2 = client_manager.client(user2);
-    auto res2 = wait(client2);
+    auto res2 = wait(client2, header::type::room_invite_message);
 
     if (!res2.contains(header::type::room_invite_message))
         return TestResult{std::string("haven't get room invite")};
@@ -136,7 +136,7 @@ TestResult room_invite(bool is_accept, const Args& args) {
     else
         client2->room_invite_reject(client1->user_id());
 
-    auto res1 = wait(client1);
+    auto res1 = wait(client1, header::type::room_join, header::type::room_invite_reject);
     if (is_accept && res1.contains(header::type::room_join))
         return TestResult {true};
     if (!is_accept && res1.contains(header::type::room_invite_reject))
@@ -176,7 +176,7 @@ TestResult room_chat(const Args& args) {
 
     for (auto index : all_user_index) {
         auto &client = client_manager.client(index);
-        auto res = wait(client);
+        auto res = wait(client, header::type::room_chat);
         if (!res.contains(header::type::room_chat)) {
             return TestResult{std::string("haven't get chat msg")};
         }

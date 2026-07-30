@@ -129,7 +129,6 @@ export class Client {
 
         if (user_id == this->user_id())
             return;
-        std::println("{} : {}", user_id, message);
     }
 
     // 收到匹配成功信息
@@ -223,12 +222,6 @@ public:
         have_room_invite_id_ = 0;
     }
 
-    void room_chat(const std::string &msg) {
-        char buf[512]{};
-        auto size = message::write(buf, header::type::room_chat, this->user_id(), room_->id);
-        tcp_.send_now(std::span{buf, size});
-    }
-
     void send_heart(int id) {
         char buf[16]{};
         auto id_span = std::span{reinterpret_cast<char*>(&id), sizeof(id)};
@@ -290,7 +283,7 @@ public:
     }
 
     // 主动在房间中发送消息
-    void room_message(std::string msg) {
+    void room_chat(std::string msg) {
         char buf[512]{};
         if (!user_ || !room_)
             return;
@@ -339,8 +332,7 @@ public:
     #ifdef DEBUG
         {
             std::lock_guard lock(test_mutex);
-            test_msg[header] = std::string(msg.begin(), msg.end());
-            test_ready = true;
+            test_msg[header] = std::string(context.begin(), context.end());
         }
         test_cv.notify_one();
     #endif
@@ -387,10 +379,18 @@ public:
 
 #ifdef DEBUG
     std::condition_variable test_cv;
-    bool test_ready{};
     std::mutex test_mutex;
     auto test_info() {
         return test_msg;
+    }
+    bool has_msg(header::type type, header::type type2) {
+        return test_msg.contains(type) || test_msg.contains(type2);
+    }
+    void consume_msg(header::type type, header::type type2) {
+        if (test_msg.contains(type))
+            test_msg.erase(type);
+        if (test_msg.contains(type2))
+            test_msg.erase(type2);
     }
 #endif
 };
