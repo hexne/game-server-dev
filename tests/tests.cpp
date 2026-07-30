@@ -216,42 +216,66 @@ TestResult match(int type, const Args& args) {
         client->match_join();
     }
 
-    // 所有指定的用户都已经开始匹配
+    // 所有指定的用户都已经开始匹配，同时记录 pending_match_id
+    int pending_match_id{};
     for (auto &index : indexs) {
         auto &client = client_manager.client(index);
         auto res = wait(client, header::type::match_success);
         if (!res.contains(header::type::match_success)) {
             return TestResult{std::string("error header info")};
         }
+        auto &payload = res[header::type::match_success];
+        pending_match_id = message::read(std::span{payload.data(), payload.size()});
     }
 
-    // 全部都收到了匹配成功的通知
-    // 如果是拒绝，就挑一个用户拒绝然后检查所有是否为match_cancel
-    // 如果是接受，就全部接受然后检查是否开始
-    // 如果是超时，就先挑一个不发消息，sleep,后面检查是否为 match_cancel
-
-    // 接受
+    // 接受：全部用户发送 match_accept，然后应收到 battle_pick_hero
     if (type == 0) {
+        for (auto index : indexs) {
+            auto &client = client_manager.client(index);
+            client->match_accept(pending_match_id);
+        }
         for (auto index : indexs) {
             auto &client = client_manager.client(index);
             auto res = wait(client, header::type::battle_pick_hero);
             if (!res.contains(header::type::battle_pick_hero))
-                return TestResult {std::string("error header info")};
+                return TestResult{std::string("error header info")};
         }
         return TestResult{true};
     }
-    // 拒绝
+
+    // 拒绝：挑一个用户拒绝，检查所有人都收到 match_cancel
     if (type == 1) {
+        auto &reject_client = client_manager.client(indexs.front());
+        reject_client->match_reject(pending_match_id);
 
+        for (auto index : indexs) {
+            auto &client = client_manager.client(index);
+            auto res = wait(client, header::type::match_cancel);
+            if (!res.contains(header::type::match_cancel))
+                return TestResult{std::string("error header info")};
+        }
+        return TestResult{true};
     }
-    // 超时
+
+    // 超时：留一个用户不发任何消息，其余照常 accept，
+    // 等服务端 30s 超时定时器触发后广播 match_cancel
     if (type == 2) {
+        for (std::size_t i = 0; i + 1 < indexs.size(); ++i) {
+            auto &client = client_manager.client(indexs[i]);
+            client->match_accept(pending_match_id);
+        }
+        // indexs.back() 故意什么都不发
 
+        for (auto index : indexs) {
+            auto &client = client_manager.client(index);
+            auto res = wait(client, header::type::match_cancel);
+            if (!res.contains(header::type::match_cancel))
+                return TestResult{std::string("error header info")};
+        }
+        return TestResult{true};
     }
 
-
-
-
+    return TestResult{std::format("unknown match test type: {}", type)};
 }
 TestResult match_accept(const Args& args) {
     return match(0, args);

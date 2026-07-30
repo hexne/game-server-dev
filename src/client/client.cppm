@@ -136,18 +136,7 @@ export class Client {
         char *p = msg.data();
         int id = message::read(p);
     }
-    // 接受对局
-    void match_accept(int id) {
-        char buf[512]{};
-        auto size = message::write(buf, header::type::match_accept, user_id(), id);
-        tcp_.send_now(std::span{buf, size});
-    }
-    // 拒绝对局
-    void match_reject(int id) {
-        char buf[512]{};
-        auto size = message::write(buf, header::type::match_reject, user_id(), id);
-        tcp_.send_now(std::span{buf, size});
-    }
+
 
     // 对局取消
     void match_cancel(std::span<char> msg) {
@@ -219,6 +208,19 @@ public:
         auto size = message::write(buf, header::type::room_invite_reject, this->user_id(), user_id);
         tcp_.send_now(std::span{buf, size});
         have_room_invite_id_ = 0;
+    }
+
+    // 接受对局
+    void match_accept(int id) {
+        char buf[512]{};
+        auto size = message::write(buf, header::type::match_accept, user_id(), id);
+        tcp_.send_now(std::span{buf, size});
+    }
+    // 拒绝对局
+    void match_reject(int id) {
+        char buf[512]{};
+        auto size = message::write(buf, header::type::match_reject, user_id(), id);
+        tcp_.send_now(std::span{buf, size});
     }
 
     void send_heart(int id) {

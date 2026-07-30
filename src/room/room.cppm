@@ -122,7 +122,6 @@ public:
         room->status = RoomStatus::matched;
         int rank = room->match_rank_;
 
-        std::lock_guard lock(match_tree_mutex_);
         int index = rank / rank_size;
         auto &vec = tree_[index];
         auto it = std::ranges::find_if(vec, [&room](std::shared_ptr<Room> &cur) {
