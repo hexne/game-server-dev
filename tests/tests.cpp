@@ -306,7 +306,7 @@ int main(int argc, char* argv[]) {
         { "room_chat", room_chat },
         { "match.accept", match_accept },
         { "match.reject", match_reject },
-        { "match_timeout", match_timeout },
+        { "match.timeout", match_timeout },
     };
 
     // in 已经完成统一
