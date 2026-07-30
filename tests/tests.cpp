@@ -113,7 +113,36 @@ TestResult room_create(const Args& args) {
 
 // room_invite index1 index2, index1 邀请index2加入房间
 TestResult room_invite(bool is_accept, const Args& args) {
+    if (args.args_type == Args::ArgsType::none)
+        return TestResult{std::string("error command format")};
+    if (args.args_type == Args::ArgsType::range)
+        return TestResult{std::string("error command format")};
+    if (args.indexs.size() != 2)
+        return TestResult{std::string("error command format")};
+    auto user1 = args.indexs[0];
+    auto user2 = args.indexs[1];
 
+    // user1 邀请user2
+    client_manager.room_invite(user1, user2);
+    auto &client1 = client_manager.client(user1);
+    auto &client2 = client_manager.client(user2);
+    auto res2 = wait(client2);
+
+    if (!res2.contains(header::type::room_invite_message))
+        return TestResult{std::string("haven't get room invite")};
+
+    if (is_accept)
+        client2->room_invite_accept(client1->user_id());
+    else
+        client2->room_invite_reject(client1->user_id());
+
+    auto res1 = wait(client1);
+    if (is_accept && res1.contains(header::type::room_join))
+        return TestResult {true};
+    if (!is_accept && res1.contains(header::type::room_invite_reject))
+        return TestResult {true};
+
+    return TestResult{ std::string("error info") };
 }
 
 TestResult room_invite_accept(const Args& args) {

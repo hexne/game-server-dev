@@ -33,6 +33,7 @@ export class Client {
     std::optional<User> user_;
     std::shared_ptr<Battle> battle_;
     int battle_id_{};
+    int have_room_invite_id_{};
     std::optional<RoomInfo> room_;
     TCP tcp_;
     Timer timer_;
@@ -81,27 +82,13 @@ export class Client {
         int user1 = message::read(p);
         int user2 = message::read(p);
         int room_id = message::read(p);
-
+        have_room_invite_id_ = room_id;
         // user2应该是当前用户
         if (user2 != user_id()) {
             throw std::runtime_error(std::format("{} != {}", user2, user_id()));
         }
+    }
 
-        // 收到一个邀请信息
-        // room_invite_accept(room_id);
-        room_invite_reject(user1);
-    }
-    void room_invite_accept(int room_id) {
-        char buf[1024]{};
-        auto size = message::write(buf, header::type::room_invite_accept, user_id(), room_id);
-        tcp_.send_now(std::span{buf, size});
-    }
-    // 拒绝用户user的房间邀请
-    void room_invite_reject(int user) {
-        char buf[1024]{};
-        auto size = message::write(buf, header::type::room_invite_reject, user_id(), user);
-        tcp_.send_now(std::span{buf, size});
-    }
 
     // 用户拒绝了你的房间邀请信息
     void room_invite_reject(std::span<char> msg) {
@@ -221,7 +208,20 @@ public:
     //     auto msg_size = message::write(msg, header::type::register_user, std::span{register_msg.data(), register_msg.size()});
     //     tcp_.send_message(std::span{msg, msg_size});
     // }
-
+    // 接受加入room_id的邀请
+    void room_invite_accept(int room_id) {
+        char buf[1024]{};
+        auto size = message::write(buf, header::type::room_invite_accept, this->user_id(), have_room_invite_id_);
+        tcp_.send_now(std::span{buf, size});
+        have_room_invite_id_ = 0;
+    }
+    // 拒绝用户user的房间邀请
+    void room_invite_reject(int user_id) {
+        char buf[1024]{};
+        auto size = message::write(buf, header::type::room_invite_reject, this->user_id(), user_id);
+        tcp_.send_now(std::span{buf, size});
+        have_room_invite_id_ = 0;
+    }
     void send_heart(int id) {
         char buf[16]{};
         auto id_span = std::span{reinterpret_cast<char*>(&id), sizeof(id)};
