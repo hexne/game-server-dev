@@ -184,7 +184,9 @@ public:
         }
     }
 
-    ~Client() = default;
+    ~Client() {
+        logout();
+    }
 
     auto fd() {
         return tcp_.fd();
@@ -391,6 +393,12 @@ public:
         // 假定只有一个技能
         char buf[512]{};
         auto size = message::write(buf, header::type::battle_cast_skill, battle_id_, user_id(), attacked_user_id, pos.x, pos.y);
+        tcp_.send_now(std::span{buf, size});
+    }
+
+    void logout() {
+        char buf[512]{};
+        auto size = message::write(buf, header::type::logout, user_id());
         tcp_.send_now(std::span{buf, size});
     }
 

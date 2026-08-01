@@ -17,6 +17,7 @@ export namespace header {
         login,
         login_true,
         login_false,
+        logout,
 
         // 心跳
         heart,

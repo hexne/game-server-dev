@@ -40,6 +40,7 @@ export class Server {
     // server 的事件分发
     std::map<header::type, void (Server::*)(std::span<char>, TCP *)> events_router {
         { header::type::login,              &Server::login              },
+        { header::type::logout,             &Server::logout             },
         { header::type::heart,              &Server::heart              },
         { header::type::room_create,        &Server::room_create        },
         { header::type::room_invite,        &Server::room_invite        },
@@ -58,6 +59,13 @@ export class Server {
         { header::type::battle_cast_skill,  &Server::battle_cast_skill  },
 
     };
+
+    void logout(std::span<char> msg, TCP *socket) {
+        auto p = msg.data();
+        int user_id = message::read(p);
+
+        user_manager_.user_offline(user_id);
+    }
 
     // 匹配成功, 向id发送匹配成功信息
     void match_success(int user_id, int pending_match_id) {
