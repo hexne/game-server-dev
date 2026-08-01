@@ -65,12 +65,13 @@ endif()
 # ---------------------------------------------------------
 # 链接依赖到 module
 # ---------------------------------------------------------
-
+find_package(nlohmann_json REQUIRED CONFIG)
 
 target_link_libraries(module PRIVATE
         ${MARIADB_LIBRARY}
         ${HIREDIS_LIBRARY}
         ${REDIS_PLUS_PLUS_LIBRARY}
+        nlohmann_json::nlohmann_json
         -lcrypto
         -lssl
 )

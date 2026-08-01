@@ -21,6 +21,7 @@ import timer;
 import battle_manager;
 import hero;
 import pos;
+import config;
 
 
 export class Server {
@@ -247,7 +248,7 @@ export class Server {
     }
 public:
 
-    Server(): db_("root", "123456", "game") {
+    Server() {
         match_timer_fd_ = eventfd(0, EFD_NONBLOCK);
         remove_closed_rooms_fd_ = eventfd(0, EFD_NONBLOCK);
         pending_match_timeout_fd_ = eventfd(0, EFD_NONBLOCK);
@@ -550,7 +551,7 @@ public:
 
     void run() {
         Epoll epoll;
-        server_listen_ = std::make_unique<TCP>(Address("0.0.0.0", 8080));
+        server_listen_ = std::make_unique<TCP>(Address(config().server_listen_ip, config().server_listen_port));
         server_listen_->bind();
         server_listen_->listen();
 

@@ -6,6 +6,7 @@ module;
 #include <mysql/mysql.h>
 export module database;
 import std;
+import config;
 
 
 // ===============================
@@ -221,20 +222,16 @@ public:
 // Database：你要求的最终封装
 // ===============================
 export class Database {
-    std::string host_ = "127.0.0.1";
-    int port_ = 3306;
-    std::string user_{};
-    std::string password_{};
-    std::string database_{};
+    std::string host_ = config().database_host;
+    int port_ = config().database_port;
+    std::string user_ = config().database_user;
+    std::string password_ = config().database_password;
+    std::string database_ = config().database_name;
 
     MYSQL* conn_ = nullptr;
 
 public:
-    Database(std::string user, std::string password, std::string database)
-        : user_(std::move(user)),
-          password_(std::move(password)),
-          database_(std::move(database))
-    {
+    Database() {
         conn_ = mysql_init(nullptr);
         if (!conn_) {
             throw std::runtime_error("mysql_init failed");

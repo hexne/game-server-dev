@@ -4,13 +4,23 @@ set(CMAKE_SUPPRESS_DEVELOPER_WARNINGS 1 CACHE INTERNAL "")
 
 set(CMAKE_EXPERIMENTAL_CXX_IMPORT_STD "f35a9ac6-8463-4d38-8eec-5d6008153e7d")
 set(CMAKE_CXX_MODULE_STD 1)
-add_compile_options(-freflection)
+set(EMBED_DIR "${CMAKE_CURRENT_LIST_DIR}" CACHE INTERNAL "embed resource directory" FORCE)
+add_compile_options(
+        -freflection
+        --embed-dir=${EMBED_DIR}
+)
 
 project(game-server-dev)
 
 set(CMAKE_CXX_STANDARD 26)
+
+
 add_subdirectory(src)
 add_subdirectory(tests)
+
+
+
+
 
 add_executable(game-server-dev src/main.cpp)
 target_link_libraries(game-server-dev PRIVATE
