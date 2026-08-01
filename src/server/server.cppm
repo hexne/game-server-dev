@@ -556,6 +556,7 @@ public:
 
         epoll.add(server_listen_->fd(), epoll_in | epoll_et);
         epoll.add(match_timer_fd_, epoll_in);
+        epoll.add(tick_fd_, epoll_in);
         epoll.add(remove_closed_rooms_fd_, epoll_in);
         epoll.add(pending_match_timeout_fd_, epoll_in);
 
@@ -606,7 +607,7 @@ public:
                 auto &tcp = user->tcp();
                 if (!tcp)
                     continue;
-                if (events[i].events & epoll_in | epoll_et)
+                if (events[i].events & epoll_in)
                     tcp->get_message_impl();
 
                 if (events[i].events & epoll_out)
