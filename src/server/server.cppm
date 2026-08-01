@@ -631,7 +631,11 @@ public:
                 }
 
                 if (events[i].events & (epoll_hup | epoll_err)) {
-                    user_manager_.remove_user_by_fd(fd);
+                    auto cur_user = user_manager_.search_user_by_fd(fd);
+                    if (!cur_user)
+                        continue;
+                    int user_id = cur_user->id();
+                    user_manager_.user_offline(user_id);
                 }
 
             }
