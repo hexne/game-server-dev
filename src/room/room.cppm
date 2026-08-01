@@ -229,15 +229,11 @@ class RoomManager {
     // 等待确认的房间
     std::vector<std::shared_ptr<PendingMatch>> pending_matches_;
 
-    std::mutex free_rooms_mutex_;
-    std::mutex matching_rooms_mutex_;
-    std::mutex pending_matches_mutex_;
 public:
     RoomManager() = default;
 
     void add_free_room(std::shared_ptr<Room> &room) {
         room->status = RoomStatus::free;
-        std::lock_guard lock(free_rooms_mutex_);
         free_rooms_.push_back(room);
     }
     void add_matching_room(std::shared_ptr<Room> &room) {
@@ -250,9 +246,6 @@ public:
     }
 
     void remove_closed_rooms() {
-        // @NOTE, 认为只有空闲中的房间才可能是关闭的
-        // @TODO, 后续再思考其他可能
-        std::lock_guard lock(free_rooms_mutex_);
         std::erase_if(free_rooms_, [](const auto& room) {
             return room->status == RoomStatus::closed;
         });
@@ -263,23 +256,15 @@ public:
         auto pending_match = search_pending_match(id);
         auto &[_, _, room_a, room_b, _] = *pending_match;
 
-        {
-            std::lock_guard lock(pending_matches_mutex_);
-            std::erase_if(pending_matches_, [id](std::shared_ptr<PendingMatch> &cur) {
-                return cur->id == id;
-            });
-        }
+        std::erase_if(pending_matches_, [id](std::shared_ptr<PendingMatch> &cur) {
+            return cur->id == id;
+        });
 
-        // @TODO, 此处会让房间取消匹配,进入空闲房间
-        {
-            std::lock_guard lock(free_rooms_mutex_);
-            free_rooms_.push_back(room_a);
-            free_rooms_.push_back(room_b);
-        }
+        free_rooms_.push_back(room_a);
+        free_rooms_.push_back(room_b);
     }
 
     std::shared_ptr<PendingMatch> search_pending_match(int id) {
-        std::lock_guard lock(matching_rooms_mutex_);
         const auto it = std::ranges::find_if(pending_matches_, [id](const std::shared_ptr<PendingMatch> &cur) {
             return id == cur->id;
         });
@@ -289,29 +274,25 @@ public:
     }
 
     std::shared_ptr<Room> search_room(const int room_id) {
-        {
-            std::lock_guard lock(free_rooms_mutex_);
-            for (auto &room : free_rooms_)
-                if (room->id() == room_id)
-                    return room;
-        }
-        {
-            std::lock_guard lock(matching_rooms_mutex_);
-            auto room = matching_rooms_.search_room(room_id);
-            if (room)
+        for (auto &room : free_rooms_)
+            if (room->id() == room_id)
                 return room;
-        }
-        {
-            std::lock_guard lock(pending_matches_mutex_);
-            for (auto &pending_match : pending_matches_) {
-                auto &[_, _, room_a, room_b, _] = *pending_match;
-                if (room_a->id() == room_id)
-                    return room_a;
-                if (room_b->id() == room_id)
-                    return room_b;
-            }
+        auto room = matching_rooms_.search_room(room_id);
+        if (room)
+            return room;
+        for (auto &pending_match : pending_matches_) {
+            auto &[_, _, room_a, room_b, _] = *pending_match;
+            if (room_a->id() == room_id)
+                return room_a;
+            if (room_b->id() == room_id)
+                return room_b;
         }
         return nullptr;
+    }
+
+    void battle_start(int room_id) {
+        auto room = search_room(room_id);
+        room->status = RoomStatus::battle;
     }
 
 };

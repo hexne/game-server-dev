@@ -40,6 +40,7 @@ export class Client {
     std::map<header::type, void (Client::*)(std::span<char>)> rounter_ = {
         { header::type::login_true, &Client::login_true },
         { header::type::login_false, &Client::login_false },
+        { header::type::battle_need_reconnect, &Client::battle_need_reconnect },
         { header::type::room_create_true, &Client::room_create_true },
         { header::type::room_invite_message, &Client::room_invite_message },
         { header::type::room_join, &Client::room_join },
@@ -67,6 +68,15 @@ export class Client {
             send_heart(user_id);
         }, std::chrono::seconds{5});
 
+    }
+
+    void battle_need_reconnect(std::span<char> msg) {
+        // battle_id,
+        auto p = msg.data();
+        battle_id_ = message::read(p);
+        int room_id = message::read(p);
+        int master_id = message::read(p);
+        room_ = RoomInfo{.id = room_id, .master = master_id};
     }
 
     void room_create_true(std::span<char> msg) {
@@ -99,12 +109,12 @@ export class Client {
     // 有用户加入房间
     void room_join(std::span<char> msg) {
         char *p = msg.data();
-        int user = message::read(p);
+        int user_id = message::read(p);
         int room_id = message::read(p);
         int room_master = message::read(p);
 
         // 进入房间的是当前用户， 更新房间号
-        if (user == user_id()) {
+        if (user_id == this->user_id()) {
             room_ = RoomInfo{.id = room_id, .master = room_master};
         }
         // 否则查询用户信息并显示
@@ -249,7 +259,7 @@ public:
     auto user_status() {
         if (user_ == std::nullopt)
             return std::string{};
-        return user_->status();
+        return user_->status_string();
     }
     auto room_id() {
         if (room_ == std::nullopt)
@@ -345,6 +355,12 @@ public:
         return tcp_;
     }
 
+    // 重连
+    void battle_reconnect() {
+        char buf[512]{};
+        auto size = message::write(buf, header::type::battle_reconnect, user_id());
+        tcp_.send_now(std::span{buf, size});
+    }
     // 手动发送选择的英雄
     // battle_id, user_id, hero_name
     void battle_pick_hero(HeroName hero_name) {

@@ -9,6 +9,7 @@ export module user;
 import std;
 import net;
 import time;
+import disconnect_users_list;
 
 export enum class UserStatus {
     online,
@@ -33,6 +34,8 @@ export class User {
     UserStatus status_{};
     UserProfile profile_{};
 
+    std::optional<int> battle_id_{};
+    std::optional<int> room_id_{};
     std::optional<int> tcp_fd_{};
     std::unique_ptr<TCP> tcp_{};
 
@@ -92,7 +95,10 @@ public:
     std::string number() const {
         return profile_.number;
     }
-    std::string status() const {
+    UserStatus status() const {
+        return status_;
+    }
+    std::string status_string() const {
         return enum_to_string(status_);
     }
     void status(const UserStatus status) {
@@ -127,5 +133,16 @@ public:
     std::optional<int> tcp_fd() const {
         return tcp_fd_;
     }
-
+    void battle_id(const std::optional<int>& battle_id) {
+        battle_id_ = battle_id;
+    }
+    std::optional<int> battle_id() const {
+        return battle_id_;
+    }
+    void room_id(const std::optional<int>& room_id) {
+        room_id_ = room_id;
+    }
+    std::optional<int> room_id() const {
+        return room_id_;
+    }
 };

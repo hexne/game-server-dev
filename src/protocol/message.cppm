@@ -40,6 +40,8 @@ export namespace header {
         match_reject,
 
         // 对局
+        battle_reconnect,
+        battle_need_reconnect,
         battle_snapshot,
         battle_pick_hero,
         battle_start_load,

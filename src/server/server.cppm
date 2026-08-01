@@ -49,6 +49,7 @@ export class Server {
         { header::type::match_join,         &Server::match_join         },
         { header::type::match_accept,       &Server::match_accept       },
         { header::type::match_reject,       &Server::match_reject       },
+        { header::type::battle_reconnect,   &Server::battle_reconnect   },
         { header::type::battle_pick_hero,   &Server::battle_pick_hero   },
         { header::type::battle_start_load,  &Server::battle_load        },
         { header::type::battle_move,        &Server::battle_move        },
@@ -305,8 +306,20 @@ public:
         if (!update_user)
             return;
         update_user->update_user_info(user_info);
-    }
 
+        auto info = user_manager_.reconnect_info(update_user->id());
+        if (!info)
+            return;
+        // 需要重连
+        auto [battle_id, room_id] = info.value();
+        auto room = room_manager_.search_room(room_id);
+        char reconnect_buf[512]{};
+        auto reconnect_size = message::write(reconnect_buf, header::type::battle_need_reconnect, battle_id, room_id, room->master());
+        socket->send_now(std::span{reconnect_buf, reconnect_size});
+        update_user->status(UserStatus::in_battle);
+        update_user->battle_id(battle_id);
+        update_user->room_id(room_id);
+    }
     // heart <id>
     void heart(std::span<char> msg, TCP *socket) {
         if (msg.size() != sizeof(int))
@@ -316,12 +329,28 @@ public:
         user_manager_.heart_update(user_id);
     }
 
+    //
+    void battle_reconnect(std::span<char> msg, TCP *socket) {
+        // 把user的状态重置到对局中即可
+        // 对局发送的快照是根据user_manager中的id查找的，上线后自动接收快照信息
+        // 客户端加载地图之后开始处理接收到的快照即可
+
+        auto p = msg.data();
+        int user_id = message::read(p);
+        user_manager_.user_reconnect(user_id);
+    }
+
     // room_create <user_id>
     void room_create(std::span<char> msg, TCP *socket) {
         int user_id = message::read(msg);
         // 创建一个room, 将id放到这个room中
         auto room = std::make_shared<Room>(Room::room_create(user_id));
         room_manager_.add_free_room(room);
+
+        auto user = user_manager_.search_user_by_id(user_id);
+        if (!user)
+            return;
+        user->room_id(room->id());
 
         char buf[1024]{};
         auto size = message::write(buf, header::type::room_create_true, room->id(), room->master());
@@ -352,12 +381,12 @@ public:
 
     void room_invite_accept(std::span<char> msg, TCP *socket) {
         char *p = msg.data();
-        int user = message::read(p);
+        int user_id = message::read(p);
         int room_id = message::read(p);
 
         auto room = room_manager_.search_room(room_id);
 
-        room->add_user(user);
+        room->add_user(user_id);
 
         // @TODO 房间应该加锁
         auto users = room->users();
@@ -370,7 +399,7 @@ public:
                 continue;
 
             char buf[512]{};
-            auto size = message::write(buf, header::type::room_join, id, room_id, room->master());
+            auto size = message::write(buf, header::type::room_join, user_id, room_id, room->master());
 
             tcp->send_now(std::span{buf, size});
         }
@@ -407,6 +436,11 @@ public:
         auto users = room->users();
 
         room->remove_user(id);
+
+        auto user = user_manager_.search_user_by_id(id);
+        if (!user)
+            return;
+        user->room_id(std::nullopt);
 
         for (auto user_id : users) {
             char buf[512]{};
@@ -508,6 +542,8 @@ public:
             if (!tcp)
                 continue;
             tcp->send_now(std::span{buf, size});
+            room_manager_.battle_start(user->room_id().value());
+            user->status(UserStatus::in_battle);
         }
 
     }
