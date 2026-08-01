@@ -9,90 +9,145 @@ import std;
 
 
 // ===============================
-// Row：对 MYSQL_ROW 的轻量封装
+// Result：statement 执行后的内存结果集
+// 不再持有 MYSQL_RES*，而是在 fetch 阶段就把每一列拷成 string，
+// 这样无论是 mysql_query 还是 mysql_stmt_fetch 都能复用同一套接口，
+// 调用方(res[i] / res.empty() / for(auto&row:res))不需要改动。
 // ===============================
-class Row {
-    MYSQL_ROW row_;
+export class Result {
+    std::vector<std::vector<std::string>> rows_;
 
 public:
-    Row(MYSQL_ROW r) : row_(r) {}
+    Result() = default;
+    explicit Result(std::vector<std::vector<std::string>> rows) : rows_(std::move(rows)) {}
 
-    const char* operator[](int idx) const {
-        return row_[idx];
+    bool empty() const { return rows_.empty(); }
+    size_t size() const { return rows_.size(); }
+
+    // 保持和原来一样的用法：res[i] 取第一行第 i 列
+    const std::string& operator[](int idx) const {
+        return rows_.at(0).at(idx);
     }
 
-    int get_int(int idx) const {
-        return std::stoi(row_[idx]);
-    }
-
-    std::string get_string(int idx) const {
-        return row_[idx];
-    }
+    auto begin() const { return rows_.begin(); }
+    auto end() const { return rows_.end(); }
 };
 
 
 // ===============================
-// ResultIterator：自定义迭代器
+// PreparedStatement：对 MYSQL_STMT 的 RAII 封装
+// 参数一律通过 bind() 传入，绝不拼进 SQL 字符串里
 // ===============================
-class ResultIterator {
-    MYSQL_RES* res_;
-    MYSQL_ROW row_;
+class PreparedStatement {
+    MYSQL_STMT* stmt_ = nullptr;
+    std::vector<MYSQL_BIND> param_binds_;
+
+    // MYSQL_BIND.buffer 只存指针，真正的数据得单独存一份、
+    // 保证从 bind() 调用到 mysql_stmt_execute() 之间不会被析构
+    std::deque<long long> int_storage_;
+    std::deque<std::string> str_storage_;
 
 public:
-    ResultIterator(MYSQL_RES* res, MYSQL_ROW row)
-        : res_(res), row_(row) {}
+    PreparedStatement(MYSQL* conn, const std::string& sql) {
+        stmt_ = mysql_stmt_init(conn);
+        if (!stmt_)
+            throw std::runtime_error("mysql_stmt_init failed");
 
-    Row operator*() const {
-        return Row(row_);
+        if (mysql_stmt_prepare(stmt_, sql.c_str(), sql.size()) != 0) {
+            std::string err = mysql_stmt_error(stmt_);
+            mysql_stmt_close(stmt_);
+            throw std::runtime_error("mysql_stmt_prepare failed: " + err);
+        }
     }
 
-    ResultIterator& operator++() {
-        row_ = mysql_fetch_row(res_);
+    ~PreparedStatement() {
+        if (stmt_) mysql_stmt_close(stmt_);
+    }
+
+    PreparedStatement(const PreparedStatement&) = delete;
+    PreparedStatement& operator=(const PreparedStatement&) = delete;
+    PreparedStatement(PreparedStatement&&) = default;
+
+    PreparedStatement& bind(int value) {
+        int_storage_.push_back(value);
+
+        MYSQL_BIND b{};
+        b.buffer_type = MYSQL_TYPE_LONGLONG;
+        b.buffer = &int_storage_.back();
+        param_binds_.push_back(b);
         return *this;
     }
 
-    bool operator!=(const ResultIterator& other) const {
-        return row_ != other.row_;
+    PreparedStatement& bind(const std::string& value) {
+        str_storage_.push_back(value);
+
+        MYSQL_BIND b{};
+        b.buffer_type = MYSQL_TYPE_STRING;
+        b.buffer = str_storage_.back().data();
+        b.buffer_length = str_storage_.back().size();
+        param_binds_.push_back(b);
+        return *this;
+    }
+
+    // SELECT：执行并把结果整体拷进内存，返回 Result
+    Result query() {
+        bind_params();
+        if (mysql_stmt_execute(stmt_) != 0)
+            throw std::runtime_error(mysql_stmt_error(stmt_));
+
+        MYSQL_RES* meta = mysql_stmt_result_metadata(stmt_);
+        if (!meta)
+            return Result{};
+
+        int field_count = mysql_num_fields(meta);
+        mysql_free_result(meta);
+
+        constexpr int kColBufSize = 512;
+        std::vector<std::vector<char>> col_buffers(field_count, std::vector<char>(kColBufSize));
+        std::vector<unsigned long> col_lengths(field_count);
+        std::vector<my_bool> col_is_null(field_count);
+        std::vector<MYSQL_BIND> result_binds(field_count);
+
+        for (int i = 0; i < field_count; ++i) {
+            result_binds[i] = MYSQL_BIND{};
+            result_binds[i].buffer_type = MYSQL_TYPE_STRING;
+            result_binds[i].buffer = col_buffers[i].data();
+            result_binds[i].buffer_length = kColBufSize;
+            result_binds[i].length = &col_lengths[i];
+            result_binds[i].is_null = &col_is_null[i];
+        }
+
+        mysql_stmt_bind_result(stmt_, result_binds.data());
+        mysql_stmt_store_result(stmt_);
+
+        std::vector<std::vector<std::string>> rows;
+        while (mysql_stmt_fetch(stmt_) == 0) {
+            std::vector<std::string> row;
+            row.reserve(field_count);
+            for (int i = 0; i < field_count; ++i) {
+                if (col_is_null[i])
+                    row.emplace_back();
+                else
+                    row.emplace_back(col_buffers[i].data(), col_lengths[i]);
+            }
+            rows.push_back(std::move(row));
+        }
+        return Result(std::move(rows));
+    }
+
+    // UPDATE / INSERT / DELETE：只关心是否执行成功，不需要结果集
+    void execute() {
+        bind_params();
+        if (mysql_stmt_execute(stmt_) != 0)
+            throw std::runtime_error(mysql_stmt_error(stmt_));
+    }
+
+private:
+    void bind_params() {
+        if (!param_binds_.empty())
+            mysql_stmt_bind_param(stmt_, param_binds_.data());
     }
 };
-
-
-// ===============================
-// Result：封装 MYSQL_RES，提供 begin/end
-// ===============================
-class Result {
-    MYSQL_RES* res_;
-    bool valid_ = false;
-    unsigned long long row_count_ = 0;
-    MYSQL_ROW row_;
-public:
-    explicit Result(MYSQL_RES* r)
-        : res_(r),
-          valid_(r != nullptr),
-          row_count_(r ? mysql_num_rows(r) : 0) {
-        row_ = mysql_fetch_row(res_);
-    }
-
-    ~Result() {
-        if (res_) mysql_free_result(res_);
-    }
-
-    bool valid() const { return valid_; }
-    bool empty() const { return row_count_ == 0; }
-    unsigned long long size() const { return row_count_; }
-    auto operator[] (int index) const {
-        return row_[index];
-    }
-    ResultIterator begin() {
-        return ResultIterator(res_, mysql_fetch_row(res_));
-    }
-
-    ResultIterator end() {
-        return ResultIterator(res_, nullptr);
-    }
-};
-
-
 
 
 export class Database;
@@ -101,7 +156,8 @@ class SQLBuilder {
 
     std::vector<std::string> selects_;
     std::string from_;
-    std::vector<std::string> wheres_;
+    std::vector<std::string> wheres_;                       // "column = ?"
+    std::vector<std::variant<int, std::string>> params_;    // 与 wheres_ 一一对应的绑定值
 
 public:
     SQLBuilder() = default;
@@ -120,15 +176,17 @@ public:
         return *this;
     }
 
-    // WHERE
-    template <class... Args>
-    SQLBuilder& where(const std::string& fmt, Args&&... args) {
-        auto cond = std::vformat(fmt.c_str(), std::make_format_args(args...));
-        wheres_.push_back(std::move(cond));
+    // WHERE column = <value>
+    // value 会作为绑定参数走 prepared statement，不会被拼进 SQL 字符串，
+    // 因此这里不再需要（也不允许）传格式化字符串
+    template <class T>
+    SQLBuilder& where(const std::string& column, T value) {
+        wheres_.push_back(column + " = ?");
+        params_.emplace_back(std::move(value));
         return *this;
     }
 
-    // 构建 SQL 字符串
+    // 构建 SQL 字符串（此时只有占位符，没有真实数据）
     std::string build() const {
         std::string sql = "SELECT ";
 
@@ -202,17 +260,10 @@ public:
         if (conn_) mysql_close(conn_);
     }
 
-    // ⭐ 你要求的 query：返回可迭代对象
-    Result query(const std::string& sql) {
-        if (mysql_query(conn_, sql.c_str()) != 0) {
-            throw std::runtime_error(mysql_error(conn_));
-        }
-
-        MYSQL_RES* res = mysql_store_result(conn_);
-        if (!res) {
-            throw std::runtime_error("mysql_store_result failed");
-        }
-        return Result(res);
+    // 只允许通过 prepared statement 访问数据库，
+    // 不再对外暴露"传原始 SQL 字符串"的 query 接口，从源头堵住拼接注入的可能性
+    PreparedStatement prepare(const std::string& sql) {
+        return PreparedStatement(conn_, sql);
     }
 
     SQLBuilder builder_{this};
@@ -223,13 +274,17 @@ public:
 };
 
 Result SQLBuilder::exec() {
-    return db_->query(build());
+    auto stmt = db_->prepare(build());
+    for (auto& p : params_) {
+        std::visit([&stmt](auto&& v) { stmt.bind(v); }, p);
+    }
+    return stmt.query();
 }
 
 export std::string search_user_profile(Database &db, std::string number) {
     auto res = db->select("id", "name", "number", "password_hash", "create_time", "level", "exp", "rank")
         .from("users")
-        .where("number = '{}'", number)
+        .where("number", number)
         .exec();
 
     if (res.empty())
@@ -240,13 +295,10 @@ export std::string search_user_profile(Database &db, std::string number) {
 }
 
 export bool update_user_progress(Database &db, int id, int level, int exp, int rank) {
-    std::string sql = std::format(
-        "UPDATE users SET level={}, exp={}, rank={} WHERE id={}",
-        level, exp, rank, id
-    );
-
     try {
-        db.query(sql);
+        auto stmt = db.prepare("UPDATE users SET level = ?, exp = ?, rank = ? WHERE id = ?");
+        stmt.bind(level).bind(exp).bind(rank).bind(id);
+        stmt.execute();
         return true;
     } catch (const std::exception& e) {
         return false;
