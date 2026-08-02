@@ -2,7 +2,7 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-BUILD_DIR="$ROOT_DIR/cmake-build-debug-gcc-trunk"
+BUILD_DIR="$ROOT_DIR/build"
 SERVER_BIN="$BUILD_DIR/game-server-dev"
 MANAGER_BIN="$BUILD_DIR/manager"
 SERVER_LOG="$ROOT_DIR/logs/test-server.log"
