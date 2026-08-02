@@ -37,6 +37,8 @@ export class Client {
     std::optional<RoomInfo> room_;
     TCP tcp_;
     Timer timer_;
+    bool connected_{};
+    int connect_errno_{};
     std::map<header::type, void (Client::*)(std::span<char>)> rounter_ = {
         { header::type::login_true, &Client::login_true },
         { header::type::login_false, &Client::login_false },
@@ -179,7 +181,9 @@ export class Client {
 public:
     explicit Client(const Address &address) : tcp_(std::move(address)) {
         auto res = tcp_.connect();
-        if (res == -1 && errno != EINPROGRESS) {
+        connected_ = (res == 0 || (res == -1 && errno == EINPROGRESS));
+        if (!connected_) {
+            connect_errno_ = errno;
             Log().push_log(std::format("connect error : {}", strerror(errno)));
         }
     }
@@ -190,6 +194,12 @@ public:
 
     auto fd() {
         return tcp_.fd();
+    }
+    bool connected() const {
+        return connected_;
+    }
+    int connect_errno() const {
+        return connect_errno_;
     }
 
     void login(std::string_view number, std::string_view password) {

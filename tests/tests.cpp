@@ -36,7 +36,8 @@ struct TestResult {
 };
 
 TestResult add(const Args& args) {
-    client_manager.add(args.indexs.front());
+    if (!client_manager.add(args.indexs.front()))
+        return TestResult{std::string("client connect failed")};
     return TestResult{true};
 }
 

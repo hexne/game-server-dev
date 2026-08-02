@@ -88,14 +88,20 @@ public:
         // }
     }
 
-    void add(int number = 1) {
+    bool add(int number = 1) {
         static int index{};
+        bool ok = true;
         for (int i : Range(number)) {
             auto client = std::make_unique<Client>(Address{"127.0.0.1", 8080});
+            if (!client->connected()) {
+                ok = false;
+                continue;
+            }
             int fd = client->fd();
             epoll_.add(fd, epoll_in | epoll_out | epoll_et, client.get());
             users_.emplace(index ++, std::move(client));
         }
+        return ok;
     }
 
     void login(std::vector<int> &indexs) {
