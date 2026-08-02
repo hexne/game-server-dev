@@ -262,6 +262,7 @@ export class TCP {
     Socket socket_;
     std::vector<char> read_buf_;
     std::vector<char> write_buf_;
+    std::mutex buf_mutex_;
     bool is_listener_ = false;
 
 public:
@@ -327,6 +328,7 @@ public:
             int n = socket_.recv(std::span<char>(buf, sizeof(buf)));
 
             if (n > 0) {
+                std::lock_guard lock(buf_mutex_);
                 read_buf_.insert(read_buf_.end(), buf, buf + n);
             }
             else if (n == -1 && errno == EAGAIN) {
@@ -343,6 +345,7 @@ public:
     // 可写事件
     // -------------------------
     void send_message_impl() {
+        std::lock_guard lock(buf_mutex_);
         while (!write_buf_.empty()) {
             int n = socket_.send(std::span<char>(write_buf_.data(), write_buf_.size()));
 
@@ -353,7 +356,9 @@ public:
                 break; // 下次再写
             }
             else {
-                close();
+                socket_.close();
+                read_buf_.clear();
+                write_buf_.clear();
                 break;
             }
         }
@@ -365,6 +370,7 @@ public:
     std::optional<std::vector<char>> get_message() {
         using length_type = int;
 
+        std::lock_guard lock(buf_mutex_);
         if (read_buf_.size() < sizeof(length_type))
             return std::nullopt;
 
@@ -390,6 +396,7 @@ public:
         using length_type = int;
 
         length_type len = msg.size();
+        std::lock_guard lock(buf_mutex_);
 
         write_buf_.insert(write_buf_.end(),
                           reinterpret_cast<const char*>(&len),
@@ -412,6 +419,7 @@ public:
     // -------------------------
     void close() {
         socket_.close();   // 你需要给 Socket 添加一个 public close()
+        std::lock_guard lock(buf_mutex_);
         read_buf_.clear();
         write_buf_.clear();
     }

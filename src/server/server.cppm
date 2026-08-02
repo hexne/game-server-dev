@@ -560,10 +560,16 @@ public:
     void run() {
         Epoll epoll;
         server_listen_ = std::make_unique<TCP>(Address(config().server_listen_ip, config().server_listen_port));
-        server_listen_->bind();
-        server_listen_->listen();
+        if (server_listen_->bind()) {
+            Log().push_log("bind ret != 0");
+            return;
+        }
+        if (server_listen_->listen()) {
+            Log().push_log("listen ret != 0");
+            return;
+        }
 
-        epoll.add(server_listen_->fd(), epoll_in | epoll_et);
+        epoll.add(server_listen_->fd(), epoll_in);
         epoll.add(match_timer_fd_, epoll_in);
         epoll.add(tick_fd_, epoll_in);
         epoll.add(remove_closed_rooms_fd_, epoll_in);

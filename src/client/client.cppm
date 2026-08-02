@@ -342,15 +342,14 @@ public:
         if (!rounter_.contains(header))
             return;
 
-    #ifdef DEBUG
+        (this->*rounter_[header])(context);
+#ifdef DEBUG
         {
             std::lock_guard lock(test_mutex);
             test_msg[header] = std::string(context.begin(), context.end());
         }
         test_cv.notify_one();
-    #endif
-
-        (this->*rounter_[header])(context);
+#endif
     }
 
     auto &tcp() {
