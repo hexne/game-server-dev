@@ -42,6 +42,7 @@ export class Client {
     std::map<header::type, void (Client::*)(std::span<char>)> rounter_ = {
         { header::type::login_true, &Client::login_true },
         { header::type::login_false, &Client::login_false },
+        { header::type::user_update_info, &Client::user_update_info },
         { header::type::battle_need_reconnect, &Client::battle_need_reconnect },
         { header::type::room_create_true, &Client::room_create_true },
         { header::type::room_invite_message, &Client::room_invite_message },
@@ -70,6 +71,13 @@ export class Client {
             send_heart(user_id);
         }, std::chrono::seconds{5});
 
+    }
+
+    void user_update_info(std::span<char> msg) {
+        std::string user_info = std::string(msg.begin(), msg.end());
+        if (!user_)
+            return;
+        user_->update_user_info(user_info);
     }
 
     void battle_need_reconnect(std::span<char> msg) {

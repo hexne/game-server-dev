@@ -117,11 +117,20 @@ public:
     int level() const {
         return profile_.level;
     }
+    void level(int level) {
+        profile_.level = level;
+    }
     int exp() const {
         return profile_.exp;
     }
+    void exp(int exp) {
+        profile_.exp = exp;
+    }
     int rank() const {
         return profile_.rank;
+    }
+    void rank(int rank) {
+        profile_.rank = rank;
     }
     Time create_time() const {
         return profile_.create_time;

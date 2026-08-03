@@ -36,7 +36,9 @@ export class Battle {
         int dy = std::abs(hero_pos.y - pos.y);
         return dx * dx + dy * dy <= r * r;
     }
-
+    bool check_winner_is_team_a() {
+        return dist_(random_engine_);
+    }
 public:
     Battle(int battle_id, int random_seed, Team team_a, Team team_b, BattleType type)
         : battle_id_(battle_id), random_seed_(random_seed), team_a_(std::move(team_a)), team_b_(std::move(team_b)),
@@ -124,9 +126,7 @@ public:
     bool all_players_loaded() {
         return team_a_.all_players_loaded() && team_b_.all_players_loaded();
     }
-    bool check_winner_is_team_a() {
-        return dist_(random_engine_);
-    }
+
 
     bool need_finish() {
         return true;
@@ -156,6 +156,12 @@ public:
     }
     std::vector<int> team_b_users() {
         return team_b_.all_users();
+    }
+    bool user_is_team_a(int user_id) {
+        return team_a_.have_user(user_id);
+    }
+    bool user_is_team_b(int user_id) {
+        return team_b_.have_user(user_id);
     }
 
     void user_load(int user_id, int val) {

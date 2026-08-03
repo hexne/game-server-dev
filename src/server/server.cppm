@@ -257,9 +257,78 @@ export class Server {
 
             if (!battle->need_finish())
                 return;
-            auto battle_result = battle->battle_finish();
+            battle_settlement(battle_id);
+
             // 为数据库写入battle result
         }
+    }
+
+    void battle_settlement(int battle_id) {
+        auto battle = battle_manager_.get_battle(battle_id);
+        if (battle)
+            return;
+        auto battle_result = battle->battle_finish();
+
+        // 对局信息写数据库
+        for (auto user_id : battle_result.team_a_users_id) {
+            db_.insert_battle_result(battle_result.battle_id,
+                                    user_id,
+                                    "A",
+                                    battle_result.winner_is_team_a
+                                    );
+        }
+        for (auto user_id : battle_result.team_b_users_id) {
+            db_.insert_battle_result(battle_result.battle_id,
+                                    user_id,
+                                    "B",
+                                    battle_result.winner_is_team_a
+                                    );
+        }
+
+        // 用户信息写数据库
+        // level, rank, exp
+        for (auto user_id : battle->all_users()) {
+            auto user = user_manager_.search_user_by_id(user_id);
+            bool winner_is_team_a = battle_result.winner_is_team_a;
+
+            // 计算经验和等级
+            int exp = user->exp();
+            int level = user->level();
+            int rank = user->rank();
+
+            if (!user)
+                continue;
+            exp += 100;
+            if (exp % 1000) {
+                // 升级
+                exp -= 1000;
+                level += 1;
+            }
+
+            bool user_is_team_a = battle->user_is_team_a(user_id);
+            bool user_is_win = user_is_team_a == winner_is_team_a;
+
+            if (user_is_win)
+                rank += 10;
+            else
+                rank -= 10;
+
+            user->rank(rank);
+            user->level(level);
+            user->exp(exp);
+
+            db_.update_user_progress(user->id, level, exp, rank);
+
+            auto user_info = user->to_string();
+            char buf[512]{};
+            auto size = message::write(buf, header::type::user_update_info, std::span{user_info.c_str(), user_info.size()});
+            auto &tcp = user->tcp();
+            if (!tcp)
+                return;
+            tcp->send_now(std::span{buf, size});
+        }
+
+
     }
 public:
 
