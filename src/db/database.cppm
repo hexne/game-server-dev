@@ -42,12 +42,11 @@ public:
         }
     }
 
-    std::vector<std::string> fetch_all() {
+    std::vector<std::vector<std::string>> fetch_all() {
         MYSQL_RES* meta = mysql_stmt_result_metadata(stmt_);
         if (!meta) return {};
 
         unsigned int num_fields = mysql_num_fields(meta);
-        std::vector<std::string> result(num_fields);
 
         std::vector<MYSQL_BIND> bind(num_fields);
         std::vector<std::vector<char>> buffers(num_fields, std::vector<char>(256));
@@ -62,15 +61,21 @@ public:
         }
 
         mysql_stmt_bind_result(stmt_, bind.data());
-        if (mysql_stmt_fetch(stmt_) == 0) {
+
+        std::vector<std::vector<std::string>> rows;
+
+        while (mysql_stmt_fetch(stmt_) == 0) {
+            std::vector<std::string> row(num_fields);
             for (unsigned int i = 0; i < num_fields; ++i) {
-                result[i] = std::string(buffers[i].data(), lengths[i]);
+                row[i] = std::string(buffers[i].data(), lengths[i]);
             }
+            rows.push_back(std::move(row));
         }
 
         mysql_free_result(meta);
-        return result;
+        return rows;
     }
+
 };
 
 
@@ -175,16 +180,72 @@ public:
         stmt.bind_params(params);
 
         stmt.execute();
-        return stmt.fetch_all();
+        return stmt.fetch_all().front();
     }
 
 
-    //
-    // void update_user_progress(Database &db, int id, int level, int exp, int rank) {
-    //     auto stmt = db.prepare("UPDATE users SET level = ?, exp = ?, rank = ? WHERE id = ?");
-    //     stmt.bind(level).bind(exp).bind(rank).bind(id);
-    //     stmt.execute();
-    // }
+    void update_user_progress(int id, int level, int exp, int rank) {
+        const char *sql = "UPDATE users SET level = ?, exp = ?, rank = ? WHERE id = ?";
+        Stmt stmt(conn_, sql);
+        std::vector<MYSQL_BIND> params;
+        params.push_back(bind(level));
+        params.push_back(bind(exp));
+        params.push_back(bind(rank));
+        params.push_back(bind(id));
+
+        stmt.bind_params(params);
+        stmt.execute();
+    }
+
+    void insert_battle_result(int battle_id, int user_id, const std::string& team, bool winner_is_team_a) {
+        const char* sql =
+            "INSERT INTO battle_results (battle_id, user_id, team, winner_is_team_a, create_time) "
+            "VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)";
+
+        Stmt stmt(conn_, sql);
+
+        std::vector<MYSQL_BIND> params;
+        params.push_back(bind(battle_id));
+        params.push_back(bind(user_id));
+        params.push_back(bind(team));
+        params.push_back(bind(static_cast<int>(winner_is_team_a)));
+
+        stmt.bind_params(params);
+        stmt.execute();
+    }
+
+    std::vector<std::vector<std::string>> search_battle(int battle_id) {
+        const char* sql =
+            "SELECT battle_id, user_id, team, winner_is_team_a, create_time "
+            "FROM battle_results WHERE battle_id=?";
+
+        Stmt stmt(conn_, sql);
+
+        std::vector<MYSQL_BIND> params;
+        params.push_back(bind(battle_id));
+
+        stmt.bind_params(params);
+        stmt.execute();
+
+        return stmt.fetch_all();
+    }
+
+    std::vector<std::string> search_battle(int battle_id, int user_id) {
+        const char* sql =
+            "SELECT battle_id, user_id, team, winner_is_team_a, create_time "
+            "FROM battle_results WHERE battle_id=? AND user_id=?";
+
+        Stmt stmt(conn_, sql);
+
+        std::vector<MYSQL_BIND> params;
+        params.push_back(bind(battle_id));
+        params.push_back(bind(user_id));
+
+        stmt.bind_params(params);
+        stmt.execute();
+
+        return stmt.fetch_all().front();
+    }
 
 };
 
