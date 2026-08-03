@@ -292,10 +292,10 @@ public:
         // + 1 跳过 ':'
         std::string password_hash(pos + 1, msg.end());
 
-        std::string user_info;
+        std::vector<std::string> user_info;
         {
             std::lock_guard lock(db_mutex);
-            user_info = search_user_profile(db_, number);
+            user_info = db_.search_user_profile(number);
         }
 
         auto login_false = [socket] {
@@ -314,8 +314,9 @@ public:
             login_false();
             return;
         }
+        auto user_info_string = user->to_string();
         char buf[512]{};
-        auto size = message::write(buf, header::type::login_true, std::span{user_info.data(), user_info.size()});
+        auto size = message::write(buf, header::type::login_true, std::span{user_info_string.data(), user_info_string.size()});
         socket->send_now(std::span{buf, size});
 
         auto update_user = user_manager_.search_user_by_fd(socket->fd());

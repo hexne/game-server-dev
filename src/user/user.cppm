@@ -66,16 +66,23 @@ public:
     explicit User(const std::string &user_string) {
         update_user_info(user_string);
     }
+    explicit User(const std::vector<std::string> user_infos) {
+        update_user_info(user_infos);
+    }
     void update_user_info(const std::string &user_string) {
         const auto vec = split(user_string, '|');
-        id_ = std::stoi(vec[0]);
-        profile_.name = vec[1];
-        profile_.number = vec[2];
-        profile_.password_hash = vec[3];
-        profile_.create_time = Time(vec[4]);
-        profile_.level = std::stoi(vec[5]);
-        profile_.exp = std::stoi(vec[6]);
-        profile_.rank = std::stoi(vec[7]);
+        update_user_info(vec);
+    }
+    void update_user_info(const std::vector<std::string> &info) {
+        id_ = std::stoi(info[0]);
+        profile_.name = info[1];
+        profile_.number = info[2];
+        profile_.password_hash = info[3];
+        profile_.create_time = Time(info[4]);
+        profile_.level = std::stoi(info[5]);
+        profile_.exp = std::stoi(info[6]);
+        profile_.rank = std::stoi(info[7]);
+
     }
 
     std::string to_string() const {
