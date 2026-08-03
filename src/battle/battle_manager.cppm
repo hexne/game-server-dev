@@ -23,6 +23,9 @@ public:
         battles_[id] = std::make_shared<Battle>(id, random_engine_(), Team{ team_a }, Team{ team_b }, BattleType::pick_hero);
         return id;
     }
+    void battle_finish(int battle_id) {
+        battles_.erase(battle_id);
+    }
 
     std::shared_ptr<Battle> get_battle(int id) {
         if (!battles_.contains(id))
@@ -30,40 +33,6 @@ public:
         return battles_[id];
     }
 
-    void user_pick_hero(int battle_id, int user_id, HeroName hero_name) {
-        auto battle = get_battle(battle_id);
-        if (!battle)
-            return;
-
-        battle->pick_hero(user_id, hero_name);
-    }
-
-    bool all_players_picked(int battle_id) {
-        auto battle = get_battle(battle_id);
-        if (!battle)
-            return false;
-        return battle->all_players_picked();
-    }
-    bool all_players_loaded(int battle_id) {
-        auto battle = get_battle(battle_id);
-        if (!battle)
-            return false;
-        return battle->all_players_loaded();
-    }
-
-    std::vector<int> all_users(int battle_id) {
-        auto battle = get_battle(battle_id);
-        if (!battle)
-            return {};
-        return battle->all_users();
-    }
-
-    void battle_load(int battle_id, int user_id, int val) {
-        auto battle = get_battle(battle_id);
-        if (!battle)
-            return;
-        battle->user_load(user_id, val);
-    }
 
     void battle_update_all_hero_pos() {
         for (auto& battle : battles_ | std::views::values) {

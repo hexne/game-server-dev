@@ -268,6 +268,7 @@ export class Server {
         if (battle)
             return;
         auto battle_result = battle->battle_finish();
+        battle_manager_.battle_finish(battle_id);
 
         // 对局信息写数据库
         for (auto user_id : battle_result.team_a_users_id) {
@@ -313,15 +314,18 @@ export class Server {
             else
                 rank -= 10;
 
+            // 更新服务器中的user信息
             user->rank(rank);
             user->level(level);
             user->exp(exp);
 
-            db_.update_user_progress(user->id, level, exp, rank);
+            // 更新数据库中的信息
+            db_.update_user_progress(user->id(), level, exp, rank);
 
-            auto user_info = user->to_string();
+            // 通知客户端更新信息
+            std::string user_info = user->to_string();
             char buf[512]{};
-            auto size = message::write(buf, header::type::user_update_info, std::span{user_info.c_str(), user_info.size()});
+            auto size = message::write(buf, header::type::user_update_info, std::span<char>{user_info.data(), user_info.size()});
             auto &tcp = user->tcp();
             if (!tcp)
                 return;
@@ -584,11 +588,13 @@ public:
         auto battle_id = message::read(p);
         auto user_id = message::read(p);
         auto hero_name = static_cast<HeroName>(message::read(p));
-        battle_manager_.user_pick_hero(battle_id, user_id, hero_name);
 
         auto battle = battle_manager_.get_battle(battle_id);
         if (!battle)
             return;
+
+        battle->pick_hero(user_id, hero_name);
+
         if (!battle->all_players_picked())
             return;
         battle->battle_load();
@@ -596,7 +602,7 @@ public:
         // 通知所有用户开始加载
         char buf[512]{};
         auto size = message::write(buf, header::type::battle_start_load);
-        auto all_user = battle_manager_.all_users(battle_id);
+        auto all_user = battle->all_users();
         for (auto cur_user_id : all_user) {
             auto user = user_manager_.search_user_by_id(cur_user_id);
             if (!user)
@@ -614,9 +620,13 @@ public:
         int user_id = message::read(p);
         int val = message::read(p);
 
-        battle_manager_.battle_load(battle_id, user_id, val);
+        auto battle = battle_manager_.get_battle(battle_id);
+        if (!battle)
+            return;
 
-        if (!battle_manager_.all_players_picked(battle_id))
+        battle->user_load(user_id, val);
+
+        if (!battle->all_players_picked())
             return;   // 没有全部加载完就不管
 
 
@@ -635,9 +645,7 @@ public:
             room_manager_.battle_start(user->room_id().value());
         }
 
-        auto battle = battle_manager_.get_battle(battle_id);
-        if (!battle)
-            return;
+
         battle->battle_start();
 
     }

@@ -146,18 +146,18 @@ public:
     }
 
     template <typename T>
-    MYSQL_BIND bind(const T& val) {
+    MYSQL_BIND bind(T val) {
         MYSQL_BIND b{};
         std::memset(&b, 0, sizeof(b));
 
         if constexpr (std::is_same_v<T, std::string>) {
             b.buffer_type   = MYSQL_TYPE_STRING;
-            b.buffer        = const_cast<char*>(val.c_str());
+            b.buffer        = (void *)(val.c_str());
             b.buffer_length = val.size();
         }
         else if constexpr (std::is_same_v<T, int>) {
             b.buffer_type   = MYSQL_TYPE_LONG;
-            b.buffer        = static_cast<char*>(&val);
+            b.buffer        = (void*)(&val);
             b.buffer_length = sizeof(val);
         }
         else {
