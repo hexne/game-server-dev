@@ -18,6 +18,7 @@ import timer;
 import hash256;
 import hero;
 import battle;
+import battle_result;
 import pos;
 
 
@@ -55,6 +56,7 @@ export class Client {
         { header::type::battle_start_load, &Client::battle_start_load },
         { header::type::battle_start, &Client::battle_start },
         { header::type::battle_snapshot, &Client::battle_snapshot },
+        { header::type::battle_result, &Client::battle_result }
     };
 
     void login_false(std::span<char> msg) {
@@ -183,6 +185,15 @@ export class Client {
         battle_->deserialize(msg.data());
         update_ui();
     }
+
+    void battle_result(std::span<char> msg) {
+        char *p = msg.data();
+        BattleResult battle_result;
+        battle_result.deserialize(p);
+
+        // 根据battle_result 绘制界面
+    }
+
     void update_ui() {
 
     }

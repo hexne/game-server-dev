@@ -53,6 +53,7 @@ export namespace header {
         battle_end,
         battle_victory,
         battle_defeat,
+        battle_result,
 
         // 对局操作
         battle_move,          // 移动操作

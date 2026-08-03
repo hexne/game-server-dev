@@ -330,8 +330,14 @@ export class Server {
             if (!tcp)
                 return;
             tcp->send_now(std::span{buf, size});
-        }
 
+
+            // 发送对局结果
+            char battle_result_buf[512]{};
+            auto pos = message::write(battle_result_buf, header::type::battle_result);
+            auto battle_result_buf_end = battle_result.serialize(battle_result_buf + pos);
+            tcp->send_now(std::span{battle_result_buf, static_cast<std::size_t>(battle_result_buf_end - battle_result_buf)});
+        }
 
     }
 public:
