@@ -36,6 +36,7 @@ export class Server {
     Timer timer_;
     Database db_;
     std::mutex db_mutex;
+    Database battle_result_db_;
 
     // server 的事件分发
     std::map<header::type, void (Server::*)(std::span<char>, TCP *)> events_router {
@@ -124,6 +125,7 @@ export class Server {
 
             auto users_a = room_a->users();
             auto users_b = room_b->users();
+            // battle type 进入 pick hero状态
             int battle_id = battle_manager_.add_battle(users_a, users_b);
 
             char buf[512]{};
@@ -252,6 +254,11 @@ export class Server {
                 if (!user || !user->tcp()) continue;
                 user->tcp()->send_now(std::span{buf_b, size_b});
             }
+
+            if (!battle->need_finish())
+                return;
+            auto battle_result = battle->battle_finish();
+            // 为数据库写入battle result
         }
     }
 public:
@@ -509,8 +516,12 @@ public:
         auto hero_name = static_cast<HeroName>(message::read(p));
         battle_manager_.user_pick_hero(battle_id, user_id, hero_name);
 
-        if (!battle_manager_.all_players_picked(battle_id))
-            return; // 等待其他用户选择英雄, 此处不写超时逻辑，匹配已经写过了
+        auto battle = battle_manager_.get_battle(battle_id);
+        if (!battle)
+            return;
+        if (!battle->all_players_picked())
+            return;
+        battle->battle_load();
 
         // 通知所有用户开始加载
         char buf[512]{};
@@ -552,8 +563,12 @@ public:
                 continue;
             tcp->send_now(std::span{buf, size});
             room_manager_.battle_start(user->room_id().value());
-            user->status(UserStatus::in_battle);
         }
+
+        auto battle = battle_manager_.get_battle(battle_id);
+        if (!battle)
+            return;
+        battle->battle_start();
 
     }
 

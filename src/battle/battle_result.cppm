@@ -8,10 +8,9 @@ export module battle_result;
 import std;
 import user;
 
-export class BattleResult {
-    std::vector<User> room_a;
-    std::vector<User> room_b;
-
-public:
-
+export struct BattleResult {
+    int battle_id{};
+    bool winner_is_team_a{};
+    std::vector<int> team_a_users_id;
+    std::vector<int> team_b_users_id;
 };

@@ -14,11 +14,20 @@ import time;
 import message;
 import ground_effects;
 
+export enum class BattleType {
+    pick_hero,
+    battle_load,
+    battle,
+    finish
+};
+
 export class Battle {
+    int battle_id_;
+    BattleType type_;
     Team team_a_, team_b_;
     int random_seed_{};
     std::default_random_engine random_engine_;
-
+    std::bernoulli_distribution dist_;
     std::vector<GroundEffects> ground_effects_;
 
     bool in_range(const Pos &pos, int r, std::shared_ptr<Hero> hero) {
@@ -29,8 +38,9 @@ export class Battle {
     }
 
 public:
-    Battle(int random_seed, Team team_a, Team team_b)
-        : random_seed_(random_seed), team_a_(std::move(team_a)), team_b_(std::move(team_b)), random_engine_(random_seed_) {  }
+    Battle(int battle_id, int random_seed, Team team_a, Team team_b, BattleType type)
+        : battle_id_(battle_id), random_seed_(random_seed), team_a_(std::move(team_a)), team_b_(std::move(team_b)),
+            random_engine_(random_seed_), dist_(std::bernoulli_distribution(0.5f)), type_(type) {  }
 
     // battle.cppm
     char* serialize_for_team(bool viewer_is_team_a, char* buf) {
@@ -90,7 +100,15 @@ public:
             team_b_.user_pick_hero(user_id, hero_name);
     }
 
-    void start_battle() {  }
+    void battle_start() {
+        type_ = BattleType::battle;
+        // 直接随机数决出获胜队伍
+        bool winner_is_a_team = dist_(random_engine_);
+    }
+
+    void battle_load() {
+        type_ = BattleType::battle_load;
+    }
 
     // 用户加载完毕
     void user_loaded(int user_id) {
@@ -106,9 +124,24 @@ public:
     bool all_players_loaded() {
         return team_a_.all_players_loaded() && team_b_.all_players_loaded();
     }
+    bool check_winner_is_team_a() {
+        return dist_(random_engine_);
+    }
 
+    bool need_finish() {
+        return true;
+    }
     // 结束战斗，生成战斗结算
-    BattleResult finish_battle() {
+    BattleResult battle_finish() {
+        type_ = BattleType::finish;
+        return BattleResult{
+                            .battle_id = battle_id_,
+                            .winner_is_team_a = check_winner_is_team_a(),
+                            .team_a_users_id = team_a_users(),
+                            .team_b_users_id = team_b_users(),
+        };
+
+
         return {};
     }
 

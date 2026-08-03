@@ -35,8 +35,8 @@ export struct Config {
         database_host      = config["database_config"]["host"].get<std::string>();
         database_port      = config["database_config"]["port"].get<int>();
         database_name      = config["database_config"]["name"].get<std::string>();
-        database_user = config["database_config"]["user"].get<std::string>();
-        database_password = config["database_config"]["password"].get<std::string>();
+        database_user      = config["database_config"]["user"].get<std::string>();
+        database_password  = config["database_config"]["password"].get<std::string>();
     }
 };
 
