@@ -256,7 +256,7 @@ export class Server {
             }
 
             if (!battle->need_finish())
-                return;
+                continue;
             battle_settlement(battle_id);
 
             // 为数据库写入battle result
@@ -265,7 +265,7 @@ export class Server {
 
     void battle_settlement(int battle_id) {
         auto battle = battle_manager_.get_battle(battle_id);
-        if (battle)
+        if (!battle)
             return;
         auto battle_result = battle->battle_finish();
         battle_manager_.battle_finish(battle_id);
