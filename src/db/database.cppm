@@ -146,7 +146,7 @@ public:
     }
 
     template <typename T>
-    MYSQL_BIND bind(T val) {
+    MYSQL_BIND bind(const T &val) {
         MYSQL_BIND b{};
         std::memset(&b, 0, sizeof(b));
 

@@ -22,13 +22,13 @@ export enum class BattleType {
 };
 
 export class Battle {
-    int battle_id_;
-    BattleType type_;
-    Team team_a_, team_b_;
+    int battle_id_{};
+    BattleType type_{};
+    Team team_a_{}, team_b_{};
     int random_seed_{};
-    std::default_random_engine random_engine_;
-    std::bernoulli_distribution dist_;
-    std::vector<GroundEffects> ground_effects_;
+    std::default_random_engine random_engine_{};
+    std::bernoulli_distribution dist_{};
+    std::vector<GroundEffects> ground_effects_{};
 
     bool in_range(const Pos &pos, int r, std::shared_ptr<Hero> hero) {
         auto hero_pos = hero->pos();
@@ -40,6 +40,7 @@ export class Battle {
         return dist_(random_engine_);
     }
 public:
+    Battle() = default;
     Battle(int battle_id, int random_seed, Team team_a, Team team_b, BattleType type)
         : battle_id_(battle_id), random_seed_(random_seed), team_a_(std::move(team_a)), team_b_(std::move(team_b)),
             random_engine_(random_seed_), dist_(std::bernoulli_distribution(0.5f)), type_(type) {  }
@@ -129,7 +130,8 @@ public:
 
 
     bool need_finish() {
-        return true;
+        static int tick_count {64 * 2};
+        return !(tick_count --);
     }
     // 结束战斗，生成战斗结算
     BattleResult battle_finish() {

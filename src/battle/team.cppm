@@ -17,6 +17,7 @@ export class Team {
     std::unordered_map<int, int> confirmed_{};
 
 public:
+    Team() = default;
     // 一开始没有pick角色
     explicit Team(const std::vector<int>& users) {
         for (auto user_id : users) {
@@ -65,7 +66,7 @@ public:
     }
 
     std::vector<int> all_users() {
-        std::vector<int> ret(users_.size());
+        std::vector<int> ret{};
         for (const auto &[user_id, _] : users_) {
             ret.push_back(user_id);
         }
@@ -132,6 +133,6 @@ public:
     }
 
     std::shared_ptr<Hero> hero(int user_id) {
-        return users_[user_id];
+        return users_.at(user_id);
     }
 };

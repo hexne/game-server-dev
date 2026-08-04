@@ -2,6 +2,6 @@ add 4
 login
 room_create 0 2
 match.accept 0 2
-battle.pick
+battle.pick 0 2
 disconnect 0
 reconnect 0

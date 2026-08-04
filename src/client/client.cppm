@@ -169,6 +169,7 @@ export class Client {
         // UI修改，进入英雄选择界面
         char *p = msg.data();
         battle_id_ = message::read(p);
+        battle_ = std::make_shared<Battle>();
     }
 
     void battle_start_load(std::span<char> msg) {
@@ -181,6 +182,8 @@ export class Client {
     }
 
     void battle_snapshot(std::span<char> msg) {
+        if (!battle_)
+            battle_ = std::make_shared<Battle>();
         // 直接从数据中提取battle中的信息，然后根据信息绘制游戏界面
         battle_->deserialize(msg.data());
         update_ui();

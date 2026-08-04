@@ -7,6 +7,7 @@ import client;
 import client_manager;
 import std;
 import message;
+import hero;
 
 ClientManager client_manager;
 
@@ -288,6 +289,60 @@ TestResult match_timeout(const Args &args) {
     return match(2, args);
 }
 
+TestResult battle_pick(const Args &args) {
+    if (args.args_type != Args::ArgsType::indexs)
+        return TestResult{std::string("error args")};
+
+    for (auto index : args.indexs) {
+        auto& client = client_manager.client(index);
+        client->battle_pick_hero(HeroName::merlin);
+    }
+
+    // 全部用户选择之后，等待收到的battle_load指令
+    for (auto index : args.indexs) {
+        auto &client = client_manager.client(index);
+        auto res = wait(client, header::type::battle_start_load);
+        if (!res.contains(header::type::battle_start_load))
+            return TestResult{std::string("error header info")};
+    }
+    return TestResult{true};
+}
+
+TestResult disconnect(const Args &args) {
+    if (args.args_type != Args::ArgsType::indexs)
+        return TestResult{std::string("error args")};
+
+    for (auto index : args.indexs) {
+        client_manager.logout(index);
+    }
+    return TestResult{true};
+}
+
+TestResult reconnect(const Args &args) {
+    if (args.args_type != Args::ArgsType::indexs)
+        return TestResult{std::string("error args")};
+
+    client_manager.login(args.indexs);
+
+    for (auto index : args.indexs) {
+        auto& client = client_manager.client(index);
+        auto res = wait(client, header::type::login_true);
+        if (!res.contains(header::type::login_true))
+            return TestResult{std::string("error header info")};
+    }
+    // 登录成功之后还会有need_connect
+
+    for (auto index : args.indexs) {
+        auto &client = client_manager.client(index);
+        auto res = wait(client, header::type::battle_need_reconnect);
+        if (!res.contains(header::type::battle_need_reconnect))
+            return TestResult{std::string("error header info")};
+        client->battle_reconnect();
+    }
+    return TestResult{true};
+}
+
+
 
 int main(int argc, char* argv[]) {
     std::istream *in = &std::cin;
@@ -308,6 +363,9 @@ int main(int argc, char* argv[]) {
         { "match.accept", match_accept },
         { "match.reject", match_reject },
         { "match.timeout", match_timeout },
+        { "battle.pick", battle_pick },
+        { "disconnect", disconnect },
+        { "reconnect", reconnect },
     };
 
     // in 已经完成统一

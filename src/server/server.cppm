@@ -54,7 +54,7 @@ export class Server {
         { header::type::match_reject,       &Server::match_reject       },
         { header::type::battle_reconnect,   &Server::battle_reconnect   },
         { header::type::battle_pick_hero,   &Server::battle_pick_hero   },
-        { header::type::battle_start_load,  &Server::battle_load        },
+        { header::type::battle_load,        &Server::battle_load        },
         { header::type::battle_move,        &Server::battle_move        },
         { header::type::battle_attack,      &Server::battle_attack      },
         { header::type::battle_cast_skill,  &Server::battle_cast_skill  },
@@ -134,10 +134,12 @@ export class Server {
             for (const auto cur_user_id : std::views::concat(users_a, users_b)) {
                 auto user = user_manager_.search_user_by_id(cur_user_id);
                 if (!user)
-                    return;
+                    continue;
+                user->status(UserStatus::in_battle);
+                user->battle_id(battle_id);
                 auto &tcp = user->tcp();
                 if (!tcp)
-                    return;
+                    continue;
                 tcp->send_now(std::span{buf, size});
             }
         }
@@ -290,6 +292,8 @@ export class Server {
         // level, rank, exp
         for (auto user_id : battle->all_users()) {
             auto user = user_manager_.search_user_by_id(user_id);
+            if (!user)
+                continue;
             bool winner_is_team_a = battle_result.winner_is_team_a;
 
             // 计算经验和等级
@@ -366,7 +370,7 @@ public:
     void login(std::span<char> msg, TCP *socket) {
         auto pos = std::ranges::find(msg, ':');
         if (pos == msg.end())
-            throw std::invalid_argument("invalid server type");
+            throw std::invalid_argument("invalid login info");
         std::string number(msg.begin(), pos);
         // + 1 跳过 ':'
         std::string password_hash(pos + 1, msg.end());

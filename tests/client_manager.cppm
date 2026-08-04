@@ -24,9 +24,31 @@ export class ClientManager {
     int get_id_by_index(int index) {
         return users_[index]->user_id();
     }
+
 public:
     std::unique_ptr<Client>& client(const int index) {
         return users_.at(index);
+    }
+
+    bool create_client(int index) {
+        auto client = std::make_unique<Client>(Address{"127.0.0.1", 8080});
+        if (!client->connected())
+            return false;
+        int fd = client->fd();
+        epoll_.add(fd, epoll_in | epoll_out | epoll_et, client.get());
+        users_.insert_or_assign(index, std::move(client));
+        return true;
+    }
+
+    void logout(int index) {
+        if (!users_.contains(index))
+            throw std::logic_error("not found index client");
+
+        int fd = users_.at(index)->fd();
+        epoll_.del(fd);
+        users_.erase(index);
+        if (!create_client(index))
+            throw std::runtime_error("recreate client failed");
     }
 
     std::vector<int> all_index() const {
@@ -104,7 +126,7 @@ public:
         return ok;
     }
 
-    void login(std::vector<int> &indexs) {
+    void login(std::vector<int> indexs) {
         if (indexs.empty()) {
             for (auto &[index, client] : users_)
                 indexs.push_back(index);
