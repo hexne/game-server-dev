@@ -8,19 +8,38 @@
 - 房间创建、邀请、聊天和离开
 - 房间匹配、确认、拒绝和超时取消
 - 英雄选择、加载和战斗状态同步
-- 移动、普通攻击、技能释放和战斗快照
+- 移动、普通攻击、技能释放（含范围地面效果）和战斗快照
 - 断线重连基础流程
+- 对局结算：写入对局结果、结算经验/等级/段位并推送给客户端
 
 ## 当前状态
 
-当前项目已经具备可运行的服务端主链路。登录、建房、邀请入房等流程可以通过仓库中的 `manager` 集成测试验证。
+当前项目已经具备可运行的服务端主链路：登录、心跳、房间/邀请/聊天、匹配、英雄选择与加载、战斗快照同步（含技能地面效果结算）、断线重连、对局结算与经验/段位成长，均可通过 `manager` 集成测试验证，并已通过 CTest 接入。
 
-目前仍属于开发中的项目，以下功能还需要继续完善：
+目前仍属于开发中的项目，以下是经过代码核对后确认的已知限制：
 
-- `GroundEffects` 已有数据结构、序列化和战斗 tick 处理，但技能释放链路尚未完全接入。
-- `BattleResult` 和完整对局结算尚未实现。
-- 重连测试脚本和测试程序的命令集还没有完全对齐。
-- CTest 尚未注册测试，当前测试通过 `manager` 程序执行。
+- 对局胜负判定 `check_winner_is_team_a()` 目前是随机结果（`std::bernoulli_distribution`），尚未接入基于团灭或血量的真实战斗结算；对局结束后的经验/段位增减是基于这个随机结果计算的。
+- 战斗快照采用全量广播，尚未做增量/差分压缩。
+- 数据库调用是同步执行的，直接跑在 Reactor 主循环所在线程上，尚未做异步化或线程隔离。
+- 协议中已定义 `battle_use_item`（使用道具）、`battle_chat`（对局内聊天）、`battle_victory`/`battle_defeat`/`battle_end` 等消息类型，但服务端还没有对应的处理逻辑，属于预留但未接入。
+- 项目使用 `manager` 作为集成测试客户端（通过 CTest 驱动），还没有引入独立的单元测试框架。
+
+## 测试
+
+测试已通过 CTest 接入，可以直接运行：
+
+```bash
+cd build
+ctest --output-on-failure
+```
+
+也可以单独跑某个测试的详细命令：
+
+```bash
+ctest -R test_login -V
+```
+
+底层实际是用 `manager` 依次执行测试文件中的命令（见下方"集成测试"和"Manager 命令"）。
 
 ## 技术结构
 
@@ -213,6 +232,12 @@ export LD_LIBRARY_PATH=/path/to/gcc-trunk/lib64:$LD_LIBRARY_PATH
 ./build/manager tests/test_files/test_match
 ```
 
+断线重连测试：
+
+```bash
+./build/manager tests/test_files/test_reconnect
+```
+
 测试文件中的命令会依次执行，输出示例：
 
 ```text
@@ -233,6 +258,9 @@ room_chat
 match.accept
 match.reject
 match.timeout
+battle.pick
+disconnect
+reconnect
 ```
 
 ## Manager 命令
@@ -250,6 +278,9 @@ match.timeout
 - [x] `match.accept` 接受匹配
 - [x] `match.reject` 拒绝匹配
 - [x] `match.timeout` 测试匹配确认超时
+- [x] `battle.pick` 选择英雄
+- [x] `disconnect` 模拟客户端断线
+- [x] `reconnect` 模拟客户端断线后重连
 
 ## 通信协议
 
@@ -293,3 +324,5 @@ room_id      房间 id
 | 普通攻击 | `battle_attack <battle_id> <user_id1> <user_id2>` | | |
 | 释放技能 | `battle_cast_skill <battle_id> <user_id> <target_user_id> <x> <y>` | | |
 | 断线重连 | `battle_reconnect <user_id>` | `battle_need_reconnect <battle_id> <room_id> <master_id>` | |
+| 用户信息更新 | | `user_update_info <user_info>` | 对局结算后推送最新经验/等级/段位 |
+| 对局结算结果 | | `battle_result <battle_id> <winner_is_team_a> <team_a_ids> <team_b_ids>` | 对局结束时推送 |
