@@ -131,8 +131,10 @@ public:
     }
 
 
+private:
+    int tick_count {64 * 2};
+public:
     bool need_finish() {
-        static int tick_count {64 * 2};
         return !(tick_count --);
     }
     // 结束战斗，生成战斗结算
