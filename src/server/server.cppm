@@ -187,10 +187,7 @@ export class Server {
         auto battle = battle_manager_.get_battle(battle_id);
         if (!battle)
             return;
-        auto hero = battle->hero(user_id);
-        if (!hero)
-            return;
-        hero->move(Pos{.x = pos_x, .y = pos_y});
+        battle->battle_move(user_id, Pos{.x = pos_x, .y = pos_y});
     }
 
     void battle_attack(std::span<char> msg, TCP *socket) {
@@ -207,7 +204,7 @@ export class Server {
         auto hero2 = battle->hero(user_id2);
         if (!hero1 || !hero2)
             return;
-        hero1->attack(hero2);
+        hero1->try_attack(hero2, battle->map());
     }
 
     void battle_cast_skill(std::span<char> msg, TCP *socket) {

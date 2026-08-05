@@ -13,6 +13,7 @@ import pos;
 import time;
 import message;
 import ground_effects;
+import battle.map;
 
 export enum class BattleType {
     pick_hero,
@@ -29,6 +30,7 @@ export class Battle {
     std::default_random_engine random_engine_{};
     std::bernoulli_distribution dist_{};
     std::vector<GroundEffects> ground_effects_{};
+    BattleMap map_;
 
     bool in_range(const Pos &pos, int r, std::shared_ptr<Hero> hero) {
         auto hero_pos = hero->pos();
@@ -247,6 +249,20 @@ public:
         if (team_b_.have_user(user_id))
             return team_b_.hero(user_id);
         return {};
+    }
+
+    // 用户想要去pos位置
+    void battle_move(int user_id, const Pos &pos) {
+        auto hero = this->hero(user_id);
+        if (!hero)
+            return;
+        auto begin_pos = hero->pos();
+        auto path = map_.a_start(begin_pos, pos);
+        hero->move_path(std::move(path));
+    }
+
+    BattleMap& map() {
+        return map_;
     }
 
     std::unordered_set<int> visible_users(bool viewer_is_team_a) {

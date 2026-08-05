@@ -81,8 +81,12 @@ public:
     }
 
     // 只给目的坐标，从当前位置开始移动
-    void move(const Pos &pos) {
-        path_ = BattleMap::a_start(pos_, pos);
+    void move_path(const std::queue<Pos> &path) {
+        path_ = path;
+    }
+
+    void move_to(const BattleMap &map, const Pos &pos) {
+        path_ = map.a_start(pos_, pos);
     }
 
     virtual char* serialize(char* buf) {
@@ -123,18 +127,19 @@ public:
     // 释放技能
     virtual void skill(std::shared_ptr<Hero>, const Pos &) = 0;
 
-    virtual void attack(std::shared_ptr<Hero> hero) {
-        // 如果不能攻击到
+    void try_attack(const std::shared_ptr<Hero> &hero, BattleMap &map) {
         if (!can_cast_attack(hero->pos())) {
-            move(hero->pos()); // 也许还得记录对方位置，实现跟踪？
+            move_to(map, hero->pos());
         }
-        // 能攻击到就直接攻击
         else {
-            // 当前角色攻击hero
-            // @TODO, 这里攻击没有计算攻速
-            int damage = hero->calculate_damage(attack_);
-            hero->receive_damage(shared_from_this(), damage);
+            attack(hero);
         }
+    }
+    virtual void attack(std::shared_ptr<Hero> hero) {
+        // 当前角色攻击hero
+        // @TODO, 这里攻击没有计算攻速
+        int damage = hero->calculate_damage(attack_);
+        hero->receive_damage(shared_from_this(), damage);
     }
 
     virtual ~Hero() = default;
