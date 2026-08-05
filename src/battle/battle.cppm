@@ -24,7 +24,7 @@ export enum class BattleType {
 
 export class Battle {
     int battle_id_{};
-    BattleType type_{};
+    BattleType status_{};
     Team team_a_{}, team_b_{};
     int random_seed_{};
     std::default_random_engine random_engine_{};
@@ -43,10 +43,16 @@ export class Battle {
     }
 public:
     Battle() = default;
-    Battle(int battle_id, int random_seed, Team team_a, Team team_b, BattleType type)
+    Battle(int battle_id, int random_seed, Team team_a, Team team_b, BattleType status)
         : battle_id_(battle_id), random_seed_(random_seed), team_a_(std::move(team_a)), team_b_(std::move(team_b)),
-            random_engine_(random_seed_), dist_(std::bernoulli_distribution(0.5f)), type_(type) {  }
+            random_engine_(random_seed_), dist_(std::bernoulli_distribution(0.5f)), status_(status) {  }
 
+    BattleType status() const {
+        return status_;
+    }
+    void status(BattleType status) {
+        status_ = status;
+    }
     // battle.cppm
     char* serialize_for_team(bool viewer_is_team_a, char* buf) {
         auto visible = visible_users(viewer_is_team_a);
@@ -106,13 +112,13 @@ public:
     }
 
     void battle_start() {
-        type_ = BattleType::battle;
+        status_ = BattleType::battle;
         // 直接随机数决出获胜队伍
         bool winner_is_a_team = dist_(random_engine_);
     }
 
     void battle_load() {
-        type_ = BattleType::battle_load;
+        status_ = BattleType::battle_load;
     }
 
     // 用户加载完毕
@@ -139,7 +145,7 @@ public:
     }
     // 结束战斗，生成战斗结算
     BattleResult battle_finish() {
-        type_ = BattleType::finish;
+        status_ = BattleType::finish;
         return BattleResult{
                             .battle_id = battle_id_,
                             .winner_is_team_a = check_winner_is_team_a(),

@@ -22,6 +22,7 @@ import battle_manager;
 import hero;
 import pos;
 import config;
+import battle;
 
 
 export class Server {
@@ -233,6 +234,9 @@ export class Server {
         auto all_battle_id = battle_manager_.all_battle_id();
         for (auto battle_id : all_battle_id) {
             auto battle = battle_manager_.get_battle(battle_id);
+            if (battle->status() != BattleType::battle)
+                continue;
+
             battle->update_all_hero_pos();
             battle->update_all_hero_effects();
             battle->update_all_ground_effects();
