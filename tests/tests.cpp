@@ -379,7 +379,8 @@ int main(int argc, char* argv[]) {
         std::println("{} : {} {}", line++, result.string(), args.cmd);
         std::flush(std::cout);
         if (!result.is_pass) {
-            return 0;
+            return -1;
         }
     }
+    return 0;
 }

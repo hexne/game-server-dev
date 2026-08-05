@@ -14,13 +14,8 @@ project(game-server-dev)
 
 set(CMAKE_CXX_STANDARD 26)
 
-
 add_subdirectory(src)
 add_subdirectory(tests)
-
-
-
-
 
 add_executable(game-server-dev src/main.cpp)
 target_link_libraries(game-server-dev PRIVATE
@@ -33,3 +28,10 @@ add_executable(manager tests/tests.cpp)
 target_link_libraries(manager PRIVATE
         test_module
 )
+
+include(CTest)
+add_test(NAME test_login     COMMAND manager ${CMAKE_SOURCE_DIR}/tests/test_files/test_login)
+add_test(NAME test_room      COMMAND manager ${CMAKE_SOURCE_DIR}/tests/test_files/test_room)
+add_test(NAME test_chat      COMMAND manager ${CMAKE_SOURCE_DIR}/tests/test_files/test_chat)
+add_test(NAME test_match     COMMAND manager ${CMAKE_SOURCE_DIR}/tests/test_files/test_match)
+add_test(NAME test_reconnect COMMAND manager ${CMAKE_SOURCE_DIR}/tests/test_files/test_reconnect)
