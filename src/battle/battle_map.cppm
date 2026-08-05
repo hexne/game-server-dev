@@ -28,7 +28,8 @@ export class BattleMap {
     constexpr static int map_size = 1000;
     MapType data_[map_size * map_size]{};
     std::mdspan<MapType, std::extents<std::size_t, map_size, map_size>> map_{data_};
-
+    bool visited[map_size][map_size]{false};
+    Pos came_from[map_size][map_size]; // 用来回溯路径
 
     static int distance(const Pos &start, const Pos &goal) {
         return std::abs(start.x - goal.x) + std::abs(start.y - goal.y);
@@ -36,15 +37,12 @@ export class BattleMap {
 public:
     BattleMap() {  }
 
-    std::queue<Pos> a_start(const Pos &start, const Pos &goal) const {
+    std::queue<Pos> a_start(const Pos &start, const Pos &goal) {
         std::priority_queue<Node> queue_;
         queue_.push(Node{start, 0, distance(start, goal)});
 
-        bool visited[map_size][map_size]{false};
-        Pos came_from[map_size][map_size]; // 用来回溯路径
-        for (int i = 0; i < map_size; ++i)
-            for (int j = 0; j < map_size; ++j)
-                came_from[i][j] = {-1, -1};
+        std::memset(visited, false, sizeof(visited));
+        std::fill(std::begin(came_from), std::end(came_from), Pos{-1, -1});
 
         const int dx[] = {1, -1, 0, 0};
         const int dy[] = {0, 0, 1, -1};
