@@ -339,6 +339,13 @@ TestResult reconnect(const Args &args) {
             return TestResult{std::string("error header info")};
         client->battle_reconnect();
     }
+
+    for (auto index : args.indexs) {
+        auto &client = client_manager.client(index);
+        auto res = wait(client, header::type::battle_snapshot);
+        if (!res.contains(header::type::battle_snapshot))
+            return TestResult{std::string("error header info")};
+    }
     return TestResult{true};
 }
 

@@ -7,6 +7,7 @@ module;
 export module database;
 import std;
 import config;
+import log;
 
 class Stmt {
     MYSQL_STMT* stmt_ = nullptr;
@@ -204,14 +205,29 @@ public:
 
         Stmt stmt(conn_, sql);
 
+        int winner = static_cast<int>(winner_is_team_a);
         std::vector<MYSQL_BIND> params;
         params.push_back(bind(battle_id));
         params.push_back(bind(user_id));
         params.push_back(bind(team));
-        params.push_back(bind(static_cast<int>(winner_is_team_a)));
+        params.push_back(bind(winner));
 
         stmt.bind_params(params);
-        stmt.execute();
+        try {
+            stmt.execute();
+        }
+        catch (...) {
+            auto eptr = std::current_exception();
+            try {
+                if (eptr) std::rethrow_exception(eptr);
+            }
+            catch (const std::exception& e) {
+                Log().push_log(std::format("Fatal error : {}", e.what()));
+            }
+            catch (...) {
+                Log().push_log("Fatal unknown error");
+            }
+        }
     }
 
     std::vector<std::vector<std::string>> search_battle(int battle_id) {
