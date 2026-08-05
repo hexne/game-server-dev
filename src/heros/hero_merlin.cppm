@@ -13,6 +13,9 @@ import message;
 // 技能开启后，引导时间内， pos位置，范围rang, 不断掉血
 export class Merlin : public Hero {
     int skill_need_distance_{};
+
+    int skill_r_ {10};
+    int sikll_s_ {5};
 public:
     Merlin() = default;
     char* serialize(char* buf) override {
@@ -33,10 +36,11 @@ public:
     void receive_damage(std::shared_ptr<Hero> hero, int damage) override {
         Hero::receive_damage(hero, damage);
     }
-    void skill(std::shared_ptr<Hero> hero, const Pos &pos) override {
+    void skill(std::shared_ptr<Hero> hero, const Pos &pos, const GroundEffectCallback &add_ground_effect) override {
         if (check_can_cast_skill(pos)) {
             effects_manager_.add_effects(EffectsType::channeling, 5);
             mp_ -= skill_need_mp_;
+            add_ground_effect(pos, skill_r_, sikll_s_);
         }
     }
     virtual ~Merlin() = default;

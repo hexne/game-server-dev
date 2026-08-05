@@ -221,7 +221,12 @@ export class Server {
         auto hero2 = battle->hero(attack_user_id);
         if (!hero1 || !hero2)
             return;
-        hero1->skill(hero2, Pos{.x = pos_x, .y = pos_y});
+
+        auto add_ground_effect = [&battle, user_id] (const Pos &pos, int r, int s){
+            battle->add_ground_effects(user_id, pos, r, s);
+        };
+        hero1->skill(hero2, Pos{.x = pos_x, .y = pos_y}, add_ground_effect);
+        // battle->add_ground_effects();
     }
 
     void tick() {

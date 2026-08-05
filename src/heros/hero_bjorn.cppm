@@ -37,7 +37,7 @@ public:
         hero->receive_damage(shared_from_this(), val);
     }
 
-    void skill(std::shared_ptr<Hero> hero, const Pos &pos) override {
+    void skill(std::shared_ptr<Hero> hero, const Pos &pos, const GroundEffectCallback &) override {
         if (check_can_cast_skill(pos)) {
             effects_manager_.add_effects(EffectsType::reflect, 6);
             mp_ -= skill_need_mp_;

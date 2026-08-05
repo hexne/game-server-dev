@@ -28,7 +28,7 @@ public:
     void receive_damage(std::shared_ptr<Hero> hero, int damage) override {
         Hero::receive_damage(hero, damage);
     }
-    void skill(std::shared_ptr<Hero> hero, const Pos &pos) override {
+    void skill(std::shared_ptr<Hero> hero, const Pos &pos, const GroundEffectCallback &) override {
         if (check_can_cast_skill(pos)) {
             enable_skill_ = true;
             mp_ -= skill_need_mp_;

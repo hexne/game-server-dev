@@ -16,7 +16,6 @@ export enum class HeroName {
     bjorn,
     loki,
     merlin,
-    thorn
 };
 
 
@@ -24,6 +23,7 @@ export enum class HeroName {
 
 export class Hero : public std::enable_shared_from_this<Hero> {
 protected:
+    using GroundEffectCallback = std::function<void(const Pos&, int radius, int duration_seconds)>;
     int hp_{}, hp_max_{};
     int mp_{}, mp_max_{};
     int attack_{};
@@ -85,7 +85,7 @@ public:
         path_ = path;
     }
 
-    void move_to(const BattleMap &map, const Pos &pos) {
+    void move_to(BattleMap &map, const Pos &pos) {
         path_ = map.a_start(pos_, pos);
     }
 
@@ -125,7 +125,7 @@ public:
     }
 
     // 释放技能
-    virtual void skill(std::shared_ptr<Hero>, const Pos &) = 0;
+    virtual void skill(std::shared_ptr<Hero>, const Pos &, const GroundEffectCallback &) = 0;
 
     void try_attack(const std::shared_ptr<Hero> &hero, BattleMap &map) {
         if (!can_cast_attack(hero->pos())) {

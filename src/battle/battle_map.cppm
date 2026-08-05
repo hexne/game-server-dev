@@ -42,7 +42,7 @@ public:
         queue_.push(Node{start, 0, distance(start, goal)});
 
         std::memset(visited, false, sizeof(visited));
-        std::fill(std::begin(came_from), std::end(came_from), Pos{-1, -1});
+        std::fill_n(&came_from[0][0], map_size * map_size, Pos{-1, -1});
 
         const int dx[] = {1, -1, 0, 0};
         const int dy[] = {0, 0, 1, -1};
