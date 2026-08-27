@@ -592,6 +592,8 @@ public:
         char *p = msg.data();
         int room_id = message::read(p);
         auto room = room_manager_.search_room(room_id);
+        if (!room)
+            return;
 
         // 把房间添加到匹配队列中
         room_manager_.add_matching_room(room);
