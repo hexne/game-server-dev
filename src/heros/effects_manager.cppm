@@ -8,6 +8,7 @@ export module effects_manager;
 import std;
 import message;
 import time;
+import timer;
 
 export enum class EffectsType : int {
     reflect,    // 反伤
@@ -31,6 +32,8 @@ struct EffectsNode {
 
 export class EffectsManager {
     std::vector<EffectsNode> effects_{};
+    CoroutineTimer timer_{};
+    int buffer_id_{};
 public:
     void remove_effects(EffectsType type) {
         std::erase_if(effects_, [type](EffectsNode &node) {
@@ -39,17 +42,14 @@ public:
     }
 
     void update() {
-        for (auto &[_, count] : effects_) {
-            count --;
-        }
-        std::erase_if(effects_, [](EffectsNode &node) {
-            return node.count <= 0;
-        });
+        timer_.resume();
     }
 
 
-    void add_effects(EffectsType type, int s) {
-        effects_.emplace_back(EffectsNode{.type = type, .count = count_tick(s)});
+    TimerTask<void> add_effects(EffectsType type, int s) {
+        effects_.emplace_back(EffectsNode{.type = type });
+        co_await timer_.sleep_for(std::chrono::seconds{s});
+        remove_effects(type);
     }
     bool search_effects(EffectsType type) {
         const auto it = std::ranges::find_if(effects_, [type](const EffectsNode &node) {

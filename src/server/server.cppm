@@ -270,7 +270,6 @@ export class Server {
 
             // 为数据库写入battle result
         }
-        coroutine_timer_.resume();
     }
 
     void battle_settlement(int battle_id) {

@@ -229,3 +229,13 @@ struct TimerTaskPromise {
     void unhandled_exception() { std::terminate(); }
 };
 
+template <>
+struct TimerTaskPromise<void> {
+    TimerTask<void> get_return_object() {
+        return TimerTask<void>{std::coroutine_handle<TimerTaskPromise>::from_promise(*this)};
+    }
+    std::suspend_never initial_suspend() noexcept { return {}; }
+    std::suspend_never final_suspend() noexcept { return {}; }   // 关键改动
+    void return_void() {}
+    void unhandled_exception() { std::terminate(); }
+};
