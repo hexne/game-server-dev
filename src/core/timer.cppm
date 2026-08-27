@@ -216,6 +216,22 @@ private:
     std::coroutine_handle<promise_type> handle_;
 };
 
+template <>
+class TimerTask<void> {
+public:
+    using promise_type = TimerTaskPromise<void>;
+
+    explicit TimerTask(std::coroutine_handle<promise_type> h) : handle_(h) {}
+    TimerTask(TimerTask &&other) noexcept = default;
+    TimerTask(const TimerTask &) = delete;
+    TimerTask &operator=(TimerTask &&other) noexcept = default;
+    ~TimerTask() = default;   // 不 destroy：协程自己靠 final_suspend = suspend_never 自我了断
+
+private:
+    std::coroutine_handle<promise_type> handle_;
+};
+
+
 template <typename T>
 struct TimerTaskPromise {
     T value{};

@@ -17,15 +17,12 @@ export enum class EffectsType : int {
 };
 struct EffectsNode {
     EffectsType type{};
-    int count{};
 
     char *serialize(char *buf) {
-        buf = message::write(buf, static_cast<int>(type));
-        return message::write(buf, count);
+        return message::write(buf, static_cast<int>(type));
     }
     char *deserialize(char *buf) {
         type = static_cast<EffectsType>(message::read(buf));
-        count = message::read(buf);
         return buf;
     }
 };
@@ -33,7 +30,6 @@ struct EffectsNode {
 export class EffectsManager {
     std::vector<EffectsNode> effects_{};
     CoroutineTimer timer_{};
-    int buffer_id_{};
 public:
     void remove_effects(EffectsType type) {
         std::erase_if(effects_, [type](EffectsNode &node) {
@@ -44,7 +40,6 @@ public:
     void update() {
         timer_.resume();
     }
-
 
     TimerTask<void> add_effects(EffectsType type, int s) {
         effects_.emplace_back(EffectsNode{.type = type });
