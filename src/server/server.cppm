@@ -35,6 +35,7 @@ export class Server {
     int pending_match_timeout_fd_;
     int tick_fd_;
     Timer timer_;
+    CoroutineTimer coroutine_timer_;
     Database db_;
     std::mutex db_mutex;
     Database battle_result_db_;
@@ -269,6 +270,7 @@ export class Server {
 
             // 为数据库写入battle result
         }
+        coroutine_timer_.resume();
     }
 
     void battle_settlement(int battle_id) {

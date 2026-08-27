@@ -31,7 +31,7 @@ export class Timer {
     std::mutex mutex_;
     std::priority_queue<Task> tasks_;
     std::jthread thread_;
-    bool have_running_task_{};
+    std::condition_variable cv_{};
 
     int id_{};
     int create_id() {
@@ -42,35 +42,37 @@ export class Timer {
 
     void run() {
         while (!is_finish()) {
-            std::optional<Task> task;
-            {
-                std::lock_guard lock(mutex_);
-                if (!tasks_.empty() and tasks_.top().end <= Time::now()){
+            if (tasks_.empty()) {
+                std::unique_lock lock(mutex_);
+                cv_.wait(lock, [this] { return is_finish() || !tasks_.empty(); });
+            }
+            else {
+                Task task;
+                {
+                    std::unique_lock lock(mutex_);
                     task = tasks_.top();
+
+                    cv_.wait_until(lock, task.end.time_point(), [this] {
+                        return is_finish() || tasks_.empty() || tasks_.top().end <= Time::now();
+                    });
+                }
+                if (is_finish())
+                    break;
+                if (tasks_.empty())
+                    continue;
+                task = tasks_.top();
+                task.callback();
+                {
+                    std::lock_guard lock(mutex_);
                     tasks_.pop();
-                    have_running_task_ = true;
-                }
-            }
-            if (task)
-                task->callback();
-            {
-                std::lock_guard lock(mutex_);
-                if (task) {
-                    if (task->is_repeat_task or --task->repeat_count > 0) {
-                        task->end += task->interval;
-                        tasks_.push(*task);
+                    if (task.is_repeat_task || --task.repeat_count > 0) {
+                        task.end += task.interval;
+                        tasks_.push(task);
                     }
-                    task.reset();
-                    have_running_task_ = false;
                 }
-
             }
-
-            std::this_thread::sleep_for(Interval {1});
         }
     }
-
-
 
 public:
     Timer() : thread_(std::jthread(&Timer::run,this)) {  }
@@ -90,6 +92,7 @@ public:
             .end = Time::now() + interval,
             .is_repeat_task = is_repeat
         });
+        cv_.notify_one();
         return id;
     }
     int add_repeat_task(CallbackFunc callback, Interval interval) {
@@ -105,7 +108,7 @@ public:
             .end = Time::now() + interval,
             .repeat_count = repeat_count
         });
-
+        cv_.notify_one();
         return id;
     }
 
@@ -123,10 +126,106 @@ public:
 
     int task_count() {
         std::lock_guard lock(mutex_);
-        return static_cast<int>(tasks_.size()) + have_running_task_;
+        return tasks_.size();
     }
 
-    ~Timer() = default;
+    ~Timer() {
+        cv_.notify_all();
+        thread_.request_stop();
+        thread_.join();
+    }
 
 
 };
+
+
+export class CoroutineTimer {
+    struct Task {
+        Time end;
+        std::coroutine_handle<> handle;
+        bool operator<(const Task &other) const { return end > other.end; }
+    };
+    std::priority_queue<Task> tasks_;
+
+    void add_task(const Time &deadline, std::coroutine_handle<> handle) {
+        tasks_.push(Task{deadline, handle});
+    }
+
+public:
+    class TimerAwaiter {
+        CoroutineTimer *timer_;
+        Time deadline_;
+    public:
+        TimerAwaiter(CoroutineTimer *timer, const Time &deadline)
+            : timer_(timer), deadline_(deadline) {}
+
+        bool await_ready() const { return deadline_ <= Time::now(); }
+        void await_suspend(std::coroutine_handle<> handle) {
+            timer_->add_task(deadline_, handle);
+        }
+        void await_resume() const {}
+    };
+
+    TimerAwaiter sleep_for(std::chrono::steady_clock::duration d) {
+        return TimerAwaiter{this, Time::now() + d};
+    }
+    TimerAwaiter sleep_until(const Time &time_point) {
+        return TimerAwaiter{this, time_point};
+    }
+
+    std::optional<Time> resume() {
+        const Time now = Time::now();
+        while (!tasks_.empty() && tasks_.top().end <= now) {
+            auto handle = tasks_.top().handle;
+            tasks_.pop();
+            handle.resume();
+        }
+        if (tasks_.empty()) return std::nullopt;
+        return tasks_.top().end;
+    }
+
+    bool empty() const { return tasks_.empty(); }
+};
+
+export template <typename T>
+struct TimerTaskPromise;
+
+export template <typename T>
+class TimerTask {
+public:
+    using promise_type = TimerTaskPromise<T>;
+
+    explicit TimerTask(std::coroutine_handle<promise_type> h) : handle_(h) {}
+    TimerTask(TimerTask &&other) noexcept : handle_(other.handle_) { other.handle_ = nullptr; }
+    TimerTask(const TimerTask &) = delete;
+    TimerTask &operator=(TimerTask &&other) noexcept {
+        if (this != &other) {
+            if (handle_) handle_.destroy();
+            handle_ = other.handle_;
+            other.handle_ = nullptr;
+        }
+        return *this;
+    }
+    ~TimerTask() { if (handle_) handle_.destroy(); }
+
+    bool done() const { return handle_.done(); }
+    T result() const { return handle_.promise().value; }
+    std::coroutine_handle<> raw_handle() const { return handle_; }
+
+private:
+    std::coroutine_handle<promise_type> handle_;
+};
+
+template <typename T>
+struct TimerTaskPromise {
+    T value{};
+
+    TimerTask<T> get_return_object() {
+        return TimerTask<T>{std::coroutine_handle<TimerTaskPromise>::from_promise(*this)};
+    }
+    std::suspend_never initial_suspend() noexcept { return {}; }
+    std::suspend_always final_suspend() noexcept { return {}; }
+    void return_value(T v) { value = std::move(v); }
+    void unhandled_exception() { std::terminate(); }
+};
+

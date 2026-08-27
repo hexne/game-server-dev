@@ -127,7 +127,6 @@ template<TimeZone time_zone = TimeZone::utc, typename TimePrecision = std::chron
 class TimeImpl {
     using ymd_t = std::chrono::year_month_day;
     using hms_t = std::chrono::hh_mm_ss<TimePrecision>;
-    using time_point_t = std::chrono::time_point<std::chrono::system_clock, TimePrecision>;
     std::chrono::zoned_time<TimePrecision> time_;
 public:
     static constexpr int get_days_in_month(int year, int month) {
@@ -299,18 +298,50 @@ public:
         return std::chrono::duration_cast<T>(time_.get_sys_time().time_since_epoch() + same_fixup).count();
     }
 
+    std::chrono::time_point<std::chrono::system_clock> time_point() {
+        return time_.get_sys_time();
+    }
+
     template <TimeType T>
     TimeImpl& operator += (T count) {
-        auto tmp = TimeImpl(count);
-        *this += tmp;
+        auto tp = get_utc_time_point_by_zone_time(time_);
+
+        tp += std::chrono::duration_cast<TimePrecision>(count);
+
+        time_ = get_zoned_time_by_utc_time_point<
+            time_zone,
+            TimePrecision
+        >(tp);
+
         return *this;
     }
 
     template <TimeType T>
     TimeImpl& operator -= (T count) {
-        auto tmp = TimeImpl(count);
-        *this -= tmp;
+        auto tp = get_utc_time_point_by_zone_time(time_);
+
+        tp -= std::chrono::duration_cast<TimePrecision>(count);
+
+        time_ = get_zoned_time_by_utc_time_point<
+            time_zone,
+            TimePrecision
+        >(tp);
+
         return *this;
+    }
+
+    template <TimeType T>
+    TimeImpl operator + (T count) {
+        TimeImpl ret(*this);
+        ret += count;
+        return ret;
+    }
+
+    template <TimeType T>
+    TimeImpl operator - (T count) {
+        TimeImpl ret(*this);
+        ret -= count;
+        return ret;
     }
 
     TimeImpl& operator += (const TimeImpl &time) {
@@ -326,20 +357,6 @@ public:
         tp -= time_duration;
         time_ = get_zoned_time_by_utc_time_point<time_zone, TimePrecision>(tp);
         return *this;
-    }
-
-    template <TimeType T>
-    TimeImpl operator + (T count) {
-        TimeImpl ret(*this);
-        ret += TimeImpl(count);
-        return ret;
-    }
-
-    template <TimeType T>
-    TimeImpl operator - (T count) {
-        TimeImpl ret(*this);
-        ret -= TimeImpl(count);
-        return ret;
     }
 
     TimeImpl operator + (const TimeImpl &time) {
@@ -380,7 +397,6 @@ using UTCTime = TimeImpl<TimeZone::utc, TimePrecision>;
 
 export template <typename TimePrecision = std::chrono::microseconds>
 using CSTTime = TimeImpl<TimeZone::cst, TimePrecision>;
-
 
 /**
  * @param 't' 完整的time
